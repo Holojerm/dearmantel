@@ -203,7 +203,7 @@ NUXT_EMAIL_QUEUE_NAME = "dearmantel-email"
 NUXT_PUBLIC_APP_URL = "https://dearmantel.com"
 # Named on /terms and /privacy, and used as Reply-To on transactional email.
 NUXT_PUBLIC_SUPPORT_EMAIL = "support@dearmantel.com"
-NUXT_PUBLIC_LEGAL_ENTITY = "Jeremy Ettlinger"
+NUXT_PUBLIC_LEGAL_ENTITY = "Holojerm LLC"
 # Passkeys (layers/keys/server/utils/passkey-origins.ts). Every passkey made here
 # belongs to this relying-party id, and its PRF output opens the account key, so
 # the id never changes once set: a new id strands every passkey. Another
@@ -343,7 +343,7 @@ NUXT_EMAIL_QUEUE_NAME = "dearmantel-email-preview"
 # stable preview origin keeps them from claiming to be production.
 NUXT_PUBLIC_APP_URL = "https://dearmantel-preview.jeremy-ettlinger.workers.dev"
 NUXT_PUBLIC_SUPPORT_EMAIL = "support@dearmantel.com"
-NUXT_PUBLIC_LEGAL_ENTITY = "Jeremy Ettlinger"
+NUXT_PUBLIC_LEGAL_ENTITY = "Holojerm LLC"
 # Empty: preview's passkeys belong to its own workers.dev host, and it lends
 # them to no other origin.
 NUXT_WEBAUTHN_RP_ID = ""

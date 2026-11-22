@@ -12,7 +12,8 @@ less often without it feeling rude.
 **Status:** in development, not yet open to sign-ups.
 
 **Licence:** [FSL-1.1-MIT](LICENSE). The source is public so the privacy claims can be checked;
-each release becomes MIT after two years. See [NOTICE.md](NOTICE.md).
+each release becomes MIT after two years. Dear Mantel is a product of Holojerm LLC. See
+[NOTICE.md](NOTICE.md).
 
 Built on [nuxt-cf-template](https://github.com/Holojerm/nuxt-cf-template). The rest of this
 file is the template's operating reference for **Nuxt 4 + Cloudflare Workers**.

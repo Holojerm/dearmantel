@@ -54,8 +54,9 @@ useSeo({
       <section class="flex flex-col gap-3">
         <h2 class="text-2xl text-highlighted">1. Who we are</h2>
         <p>
-          {{ app }} is operated by {{ entity }} ("we", "us"). By creating an account or using the
-          service you agree to these terms. If you don't agree, don't use the service.
+          {{ app }} is a product of {{ entity }}, a New York limited liability company ("we", "us"),
+          which operates the service. By creating an account or using the service you agree to these
+          terms. If you don't agree, don't use the service.
         </p>
       </section>
 
