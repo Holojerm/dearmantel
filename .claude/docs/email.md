@@ -117,7 +117,7 @@ one load-bearing email rather than a courtesy: `POST /api/auth/magic-link` inspe
 
 `sendEmail()` (Resend over fetch) **never throws** — it's always called from
 something more important than the email, and a mail outage must not 500 a login
-or make Paddle replay a money event. Unset `NUXT_RESEND_API_KEY` = logged no-op.
+or make Stripe replay a money event. Unset `NUXT_RESEND_API_KEY` = logged no-op.
 
 **It enqueues rather than POSTs when the `EMAIL_QUEUE` binding exists** (production
 and preview, never `bun dev` — the dev preset has no `queue()` handler, so a local

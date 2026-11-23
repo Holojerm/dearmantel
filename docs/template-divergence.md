@@ -4,7 +4,7 @@ Dear Mantel is a fork of [nuxt-cf-template](https://github.com/Holojerm/nuxt-cf-
 
 Keep the two in step: a path added to `template.customized` gets a row here in the same commit.
 
-Most rows trace to the teardown: billing (Paddle), referrals, the MCP worker, the blog and the template's sign-in providers are gone. Sign-in comes from the vendored `credentials` layer (password and passkey) instead.
+Most rows trace to the teardown: billing, referrals, the MCP worker, the blog and the template's sign-in providers are gone. Sign-in comes from the vendored `credentials` layer (password and passkey) instead.
 
 | Path | Why it differs |
 | --- | --- |
@@ -38,7 +38,7 @@ Most rows trace to the teardown: billing (Paddle), referrals, the MCP worker, th
 | `server/routes/llms.txt.get.ts` | No blog posts to append. |
 | `server/routes/sitemap.xml.get.ts` | No blog posts to list. |
 | `server/tasks/lifecycle-email.ts` | Comment only: no billing step (`pass_expiring`). |
-| `server/tasks/purge-expired-tokens.ts` | Description only: no MCP connect codes or Paddle event ids to purge. |
+| `server/tasks/purge-expired-tokens.ts` | Description only: no MCP connect codes or billing event ids to purge. |
 | `server/utils/account.ts` | Deletion and export without MCP connect codes or referral codes. |
 | `server/utils/auth-providers.ts` | No provider list: one sign-in method. |
 | `server/utils/blog-routes.ts` | No blog. |
