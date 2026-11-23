@@ -1,7 +1,7 @@
 // One-click List-Unsubscribe (RFC 8058) — token minting/verification, and the
 // shared guts of GET/POST /api/email/unsubscribe.
 //
-// Web Crypto only (no node:crypto), same reasoning as layers/billing/server/utils/paddle.ts:
+// Web Crypto only (no node:crypto), same reasoning as layers/billing/server/utils/stripe.ts:
 // it runs identically on Cloudflare Workers and in local dev.
 //
 // ── Why no new secret ─────────────────────────────────────────────────────
@@ -18,7 +18,7 @@
 //
 // ── Verification shape ────────────────────────────────────────────────────
 // Recompute-and-compare, not crypto.subtle.verify, to match the existing
-// convention in layers/billing/server/utils/paddle.ts (hmacSha256Hex + timingSafeEqual)
+// convention in layers/billing/server/utils/stripe.ts (hmacSha256Hex + timingSafeEqual)
 // rather than introduce a second way of doing the same thing. The comparison
 // is fixed-cost XOR accumulation over equal-length strings, not `===`, which
 // short-circuits on the first differing byte and would leak how much of a
@@ -89,7 +89,12 @@ async function deriveKeyUncached(sessionPassword: string): Promise<CryptoKey> {
   )
 }
 
-async function hmacBase64Url(sessionPassword: string, message: string): Promise<string> {
+/**
+ * HMAC of `message` under the derived key. Exported for the other links that
+ * are mailed out and must hold no secret of their own (server/utils/subscribers.ts);
+ * each caller prefixes its messages so one kind of token is never valid as another.
+ */
+export async function hmacBase64Url(sessionPassword: string, message: string): Promise<string> {
   const key = await deriveKey(sessionPassword)
   const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(message))
   return base64url(signature)
