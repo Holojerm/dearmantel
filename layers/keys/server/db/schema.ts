@@ -89,6 +89,9 @@ export const mantelKeepers = sqliteTable(
     role: text('role').notNull(),
     addedBy: text('added_by'),
     leftAt: integer('left_at', { mode: 'timestamp' }),
+    // Set when another keeper replaced the mantel's recovery code, so this
+    // keeper is told once that the code they may have printed is dead.
+    recoveryCodeReplacedAt: integer('recovery_code_replaced_at', { mode: 'timestamp' }),
     ...timestamps,
   },
   (table) => [

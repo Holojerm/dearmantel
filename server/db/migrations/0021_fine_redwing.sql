@@ -1,0 +1,1 @@
+ALTER TABLE `mantel_keepers` ADD `recovery_code_replaced_at` integer;

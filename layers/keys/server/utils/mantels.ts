@@ -127,6 +127,7 @@ export async function getMantel(db: KeysDb, userId: string, mantelId: string) {
     keyVersion: mantel.keyVersion,
     /** A keeper has left and may still hold the key: it should be changed. */
     rekeyDue: Boolean(mantel.rekeyDueAt),
+    recoveryProofHash: mantel.recoveryProofHash,
     closedAt: mantel.closedAt,
     keepers,
     wrappedKey: held('keeper'),
