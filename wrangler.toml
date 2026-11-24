@@ -15,6 +15,9 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 name = "dearmantel"
+# Pinned: the owner's login sees more than one Cloudflare account, and
+# non-interactive wrangler cannot choose between them.
+account_id = "90394168655e3aff5b5f299c4a213f54"
 compatibility_date = "2025-09-01"
 # Off: the app answers on its own domain only. Two addresses would mean two
 # sets of sessions, and a passkey made on one does not work on the other.
