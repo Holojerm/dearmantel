@@ -5,7 +5,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { crc32, zipParts } from '#layers/post/app/utils/zip'
-import { entryFileName, fileSafe } from '../shared/utils/archive'
+import { entryFileName, fileSafe, sentTo, shelfTitle } from '../shared/utils/archive'
 import { archivePage } from '../shared/utils/archive-page'
 import { DEFAULT_STATIONERY, type LetterDoc } from '../shared/utils/letter-doc'
 import { richDocToText } from '../shared/utils/rich-plain'
@@ -141,6 +141,25 @@ describe('file names', () => {
     expect(
       entryFileName(0, { id: 'a', direction: 'sent', from: null, postmark: null }, 'Bob'),
     ).toBe('001 undated to Bob')
+  })
+})
+
+describe("a kept mantel's copy", () => {
+  const sent = { id: 'a', direction: 'sent' as const, from: null, postmark: null }
+  const received = { id: 'b', direction: 'received' as const, from: 'Ann', postmark: null }
+
+  it('says the mantel wrote too, once it has', () => {
+    expect(shelfTitle({ kind: 'kept', entries: [received] }, 'Leo')).toBe('Letters to Leo')
+    expect(shelfTitle({ kind: 'kept', entries: [received, sent] }, 'Leo')).toBe(
+      'Letters to and from Leo',
+    )
+    expect(shelfTitle({ kind: 'person', entries: [sent] }, 'Ann')).toBe('Letters with Ann')
+  })
+
+  it('addresses what the mantel wrote to its reader, not to the mantel', () => {
+    expect(sentTo({ ...sent, to: 'Granny Eve' }, 'Leo')).toBe('Granny Eve')
+    expect(sentTo({ ...sent, to: null }, 'Leo')).toBe('someone who has left')
+    expect(sentTo(sent, 'Ann')).toBe('Ann')
   })
 })
 

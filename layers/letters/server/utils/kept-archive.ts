@@ -1,15 +1,17 @@
 // A keeper's copy of a kept mantel: the letters that have been opened on it,
-// and nothing else. Making a copy opens nothing, so a letter nobody has read
-// yet is counted and left out, and a sealed one stays behind both of
-// kept-mantel.ts's gates.
+// and the letters a child's mantel wrote. Making a copy opens nothing, so a
+// letter nobody has read yet is counted and left out, and a sealed one stays
+// behind both of kept-mantel.ts's gates. A letter the mantel wrote is its
+// own and goes in once, whether or not it came back.
 
 import { and, eq } from 'drizzle-orm'
 import * as tables from '@nuxthub/db/schema'
 
 import { isKeeper } from '#layers/keys/server/utils/mantels'
 
-import type { ArchiveSealed, KeptArchive } from '../../shared/utils/archive'
+import type { ArchiveEntry, ArchiveSealed, KeptArchive } from '../../shared/utils/archive'
 import { arrivedOnMantel, isSealedOn, mantelToday } from './kept-mantel'
+import { readSentForArchive, sentByMantel } from './kept-sent'
 import type { LettersDb } from './people'
 
 /** What a keeper may copy, oldest first. Null for anyone who does not keep the mantel. */
@@ -24,25 +26,38 @@ export async function listKeptArchive(
   const rows = (await arrivedOnMantel(db, mantelId)).toReversed()
   const sealed = rows.filter((row) => isSealedOn(row.opensOn, today))
   const open = rows.filter((row) => !isSealedOn(row.opensOn, today))
+  const received: ArchiveEntry[] = open
+    .filter((row) => row.openedAt)
+    .map((row) => ({
+      id: row.letterId,
+      direction: 'received',
+      from: row.chosen ?? row.account ?? null,
+      postmark: row.postmark,
+      guest: row.origin === 'guest',
+    }))
+  const sent: ArchiveEntry[] = (await sentByMantel(db, mantelId)).map((row) => ({
+    id: row.id,
+    direction: 'sent',
+    from: null,
+    postmark: row.postmark,
+    to: row.to,
+  }))
+  // By postmark, so a reply follows the letter it answers. Sort is stable,
+  // so letters of one day keep the order they came in.
+  const entries = [...received, ...sent].sort((a, b) =>
+    (a.postmark ?? '').localeCompare(b.postmark ?? ''),
+  )
   return {
-    entries: open
-      .filter((row) => row.openedAt)
-      .map((row) => ({
-        id: row.letterId,
-        direction: 'received' as const,
-        from: row.chosen ?? row.account ?? null,
-        postmark: row.postmark,
-        guest: row.origin === 'guest',
-      })),
+    entries,
     unopened: open.filter((row) => !row.openedAt).length,
     sealed: sealed.length,
   }
 }
 
 /**
- * One opened letter's ciphertext and the mantel's copy of its key. Null for a
- * letter that is sealed, not yet opened, or not on this mantel; it never
- * records an opening.
+ * One letter's ciphertext and the mantel's copy of its key: an opened letter
+ * on the mantel, or one the mantel wrote. Null for a letter that is sealed,
+ * not yet opened, or not this mantel's; it never records an opening.
  */
 export async function readKeptForArchive(
   db: LettersDb,
@@ -54,7 +69,8 @@ export async function readKeptForArchive(
   const { letterKeys } = tables
   if (!(await isKeeper(db, keeperId, mantelId))) return null
   const [row] = await arrivedOnMantel(db, mantelId, letterId)
-  if (!row?.openedAt) return null
+  if (!row) return readSentForArchive(db, mantelId, letterId)
+  if (!row.openedAt) return null
   if (isSealedOn(row.opensOn, await mantelToday(db, mantelId, now))) return null
   const [key] = await db
     .select({ wrappedKey: letterKeys.wrappedKey })

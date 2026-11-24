@@ -80,8 +80,16 @@ async function remove() {
   }
 }
 
+const returned = computed(() =>
+  Boolean(opened.value && !opened.value.sealed && opened.value.kind === 'return'),
+)
+
 const heading = computed(() => {
   const letter = opened.value
+  if (letter && !letter.sealed && letter.kind === 'return') {
+    const to = letter.name ? ` to ${letter.name}` : ''
+    return `Returned: ${mantelName.value}'s letter${to}`
+  }
   if (letter && !letter.sealed && letter.name) return `To ${mantelName.value}, from ${letter.name}`
   return mantelName.value ? `A letter to ${mantelName.value}` : 'A letter'
 })
@@ -114,6 +122,14 @@ useSeo({ title: 'A letter', description: 'A letter on a mantel you keep.', noind
         icon="i-lucide-lock"
         :title="`Sealed until ${yearDay(opened.opensOn)}`"
         description="Nobody can open this letter before that day, its keepers included."
+      />
+      <UAlert
+        v-if="returned"
+        color="info"
+        variant="subtle"
+        icon="i-lucide-undo-2"
+        title="Returned to sender"
+        :description="`This letter could not be delivered, so it has come back to ${mantelName}'s mantel.`"
       />
       <LetterPaper v-if="doc" :doc="doc" :photo-url="photoUrl" />
       <div class="flex flex-wrap items-center justify-between gap-4">
