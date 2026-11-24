@@ -20,8 +20,15 @@ import { createMantel, keepersOf } from '../server/utils/mantels'
 import { claimRecovery, findByRecoveryProof } from '../server/utils/recovery'
 
 const db = drizzle(env.DB, { schema })
-const { users, userKeys, mantels, mantelKeepers, mantelKeyWraps, mantelProposals, mantelRecoveries } =
-  schema
+const {
+  users,
+  userKeys,
+  mantels,
+  mantelKeepers,
+  mantelKeyWraps,
+  mantelProposals,
+  mantelRecoveries,
+} = schema
 
 const NOW = new Date('2026-11-16T12:00:00Z')
 const LEO = '4b0f6c1e-0d3a-4c1f-9e57-1f2f6b6f0a11'
