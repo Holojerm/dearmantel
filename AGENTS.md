@@ -128,7 +128,10 @@ The key changes only by a re-key (below).
 Who keeps a mantel changes only through `custody.ts`: a proposal takes effect when more than
 half of the keepers have voted (`carries`), so two keepers must both agree. Seating a keeper
 also needs that person's acceptance and a wrapped copy from a keeper's browser, which the
-server cannot make. A mantel's last keeper cannot delete their account. The recovery code
+server cannot make. A mantel's last keeper can delete their account only after proving they
+hold its recovery code (`sole-keeper.ts`: the proof each code derives, checked against the
+mantel's hash, passed to the deletion guard as `mantelRecoveryProofs`); the mantel and its
+letters stay with no keeper until someone uses the code. The recovery code
 (`recovery.ts`) is the one way around the vote: it never reaches the server, which keeps only
 the hash of a proof the code derives (`recoveryProof`). A keeper who uses it replaces their
 own copy of the key at once. Anyone else waits `RECOVERY_WAIT_DAYS` while every keeper is

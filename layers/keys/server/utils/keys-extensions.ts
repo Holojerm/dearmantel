@@ -1,7 +1,7 @@
 // What keys registers with core and with the credentials layer. Called once
 // per isolate by layers/keys/server/plugins/keys.ts; tests call it directly.
 
-import { and, count, eq, inArray, isNull, lt, ne } from 'drizzle-orm'
+import { and, count, eq, inArray, isNull, lt } from 'drizzle-orm'
 import * as tables from '@nuxthub/db/schema'
 
 import { onCredentialsPasswordReset } from '#layers/credentials/server/utils/credentials-hooks'
@@ -13,6 +13,7 @@ import {
 } from '#server/utils/extensions'
 
 import type { KeysDb } from './keys'
+import { soleKeeperBlock } from './sole-keeper'
 
 export interface AccountExportKeys {
   /** The public half of the account's key pair, which letters are sealed to. */
@@ -47,33 +48,6 @@ export async function expireMantelProposals(
   return { count: expired.length, truncated: false }
 }
 
-/** Open mantels this person is the only keeper of. */
-export async function soleKeeperOf(db: KeysDb, userId: string): Promise<string[]> {
-  const { mantels, mantelKeepers } = tables
-  const mine = await db
-    .select({ id: mantels.id, name: mantels.name })
-    .from(mantelKeepers)
-    .innerJoin(mantels, eq(mantels.id, mantelKeepers.mantelId))
-    .where(
-      and(eq(mantelKeepers.userId, userId), isNull(mantelKeepers.leftAt), isNull(mantels.closedAt)),
-    )
-  const alone: string[] = []
-  for (const mantel of mine) {
-    const [others] = await db
-      .select({ total: count() })
-      .from(mantelKeepers)
-      .where(
-        and(
-          eq(mantelKeepers.mantelId, mantel.id),
-          ne(mantelKeepers.userId, userId),
-          isNull(mantelKeepers.leftAt),
-        ),
-      )
-    if ((others?.total ?? 0) === 0) alone.push(mantel.name)
-  }
-  return alone
-}
-
 export function registerKeysExtensions(): void {
   const {
     userKeys,
@@ -89,6 +63,13 @@ export function registerKeysExtensions(): void {
   registerNoticeAudience(async (db, recipientIds) => {
     const audience = new Map<string, string[]>()
     for (let i = 0; i < recipientIds.length; i += 80) {
+      // A mantel whose last keeper deleted their account has nobody to tell.
+      // It is never told in its own name.
+      const kept = await db
+        .select({ id: mantels.id })
+        .from(mantels)
+        .where(inArray(mantels.id, recipientIds.slice(i, i + 80)))
+      for (const mantel of kept) audience.set(mantel.id, [])
       const keepers = await db
         .select({ mantelId: mantelKeepers.mantelId, userId: mantelKeepers.userId })
         .from(mantelKeepers)
@@ -111,19 +92,11 @@ export function registerKeysExtensions(): void {
   })
 
   // A mantel belongs to the child or the couple it is for, not to its keeper.
-  // Its last keeper leaving would strand the letters behind a printed code,
-  // so they hand it on first.
+  // Its last keeper leaving leaves the letters behind its printed code, so
+  // they hand it on first, or show they hold the code (sole-keeper.ts).
   registerDeletionGuard({
     key: 'mantel-keeper',
-    async check(db, userId) {
-      const alone = await soleKeeperOf(db, userId)
-      if (alone.length === 0) return null
-      return {
-        code: 'sole_mantel_keeper',
-        message: `You are the only keeper of ${alone.join(', ')}. Add another keeper before deleting your account, so its letters are not lost.`,
-        data: { mantels: alone },
-      }
-    },
+    check: (db, userId, context) => soleKeeperBlock(db, userId, context?.mantelRecoveryProofs),
   })
 
   // A reset proves the mailbox, not the old password, so the old password's
