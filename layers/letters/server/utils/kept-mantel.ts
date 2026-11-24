@@ -4,9 +4,10 @@
 // keepers included. The seal is this code withholding the letter plus a key
 // the server never has. One other place hands out a sealed letter's wrapped
 // key and nothing else of it: a re-key (kept-rekey.ts), which must wrap every
-// key again.
+// key again. A letter a child's mantel wrote that came back is listed and
+// opened here too, as a return: it is the mantel's own, and never sealed.
 
-import { and, desc, eq, gt, isNull, ne } from 'drizzle-orm'
+import { and, desc, eq, gt, inArray, isNull, ne } from 'drizzle-orm'
 import * as tables from '@nuxthub/db/schema'
 
 import { isKeeper, keepersOf } from '#layers/keys/server/utils/mantels'
@@ -15,6 +16,7 @@ import { localParts } from '#layers/post/shared/utils/calendar'
 
 import type { KeptItem, KeptLetter } from '../../shared/utils/kept'
 import { returnInTransitTo } from './closing'
+import { writersIn } from './kept-sent'
 import type { LettersDb } from './people'
 import type { PhotoStore } from './photos'
 
@@ -33,12 +35,21 @@ export async function mantelToday(db: LettersDb, mantelId: string, now: Date): P
 export const isSealedOn = (opensOn: string | null, today: string) =>
   Boolean(opensOn) && today < opensOn!
 
-/** Every letter delivered to a kept mantel, newest first, or one of them. */
-export async function arrivedOnMantel(db: LettersDb, mantelId: string, letterId?: string) {
+/**
+ * Every letter delivered to a kept mantel, newest first, or one of them.
+ * With `withReturns`, also the mantel's own letters that came back.
+ */
+export async function arrivedOnMantel(
+  db: LettersDb,
+  mantelId: string,
+  letterId?: string,
+  withReturns = false,
+) {
   const { deliveries, letters, people, users } = tables
   return db
     .select({
       deliveryId: deliveries.id,
+      kind: deliveries.kind,
       letterId: letters.id,
       correspondenceId: letters.correspondenceId,
       authorId: letters.authorId,
@@ -59,12 +70,30 @@ export async function arrivedOnMantel(db: LettersDb, mantelId: string, letterId?
     .where(
       and(
         eq(deliveries.recipientId, mantelId),
-        eq(deliveries.kind, 'letter'),
+        withReturns
+          ? inArray(deliveries.kind, ['letter', 'return'])
+          : eq(deliveries.kind, 'letter'),
         eq(deliveries.state, 'delivered'),
         letterId ? eq(deliveries.letterId, letterId) : undefined,
       ),
     )
     .orderBy(desc(deliveries.deliveredAt))
+}
+
+type Arrived = Awaited<ReturnType<typeof arrivedOnMantel>>[number]
+
+/** Who wrote each letter, or for a return who it was for. */
+async function namesFor(db: LettersDb, mantelId: string, rows: Arrived[]) {
+  const returns = rows.filter((row) => row.kind === 'return')
+  const writers = await writersIn(
+    db,
+    mantelId,
+    returns.map((row) => row.correspondenceId),
+  )
+  return (row: Arrived) =>
+    row.kind === 'return'
+      ? (writers.get(row.correspondenceId) ?? null)
+      : (row.chosen ?? row.account ?? null)
 }
 
 /** What has arrived on a kept mantel. Null for anyone who does not keep it. */
@@ -76,9 +105,12 @@ export async function listKeptMantel(
 ): Promise<KeptItem[] | null> {
   if (!(await isKeeper(db, keeperId, mantelId))) return null
   const today = await mantelToday(db, mantelId, now)
-  return (await arrivedOnMantel(db, mantelId)).map((row) => ({
+  const rows = await arrivedOnMantel(db, mantelId, undefined, true)
+  const nameOf = await namesFor(db, mantelId, rows)
+  return rows.map((row) => ({
     letterId: row.letterId,
-    name: row.chosen ?? row.account ?? null,
+    kind: row.kind === 'return' ? 'return' : 'letter',
+    name: nameOf(row),
     postmark: row.postmark,
     arrivedOn: row.arrivedOn,
     opened: Boolean(row.openedAt),
@@ -101,7 +133,7 @@ export async function openKeptLetter(
 ): Promise<KeptLetter | null> {
   const { deliveries, letterKeys } = tables
   if (!(await isKeeper(db, keeperId, mantelId))) return null
-  const [row] = await arrivedOnMantel(db, mantelId, letterId)
+  const [row] = await arrivedOnMantel(db, mantelId, letterId, true)
   if (!row) return null
   if (row.opensOn && isSealedOn(row.opensOn, await mantelToday(db, mantelId, now))) {
     return { sealed: true, letterId, postmark: row.postmark, opensOn: row.opensOn }
@@ -118,11 +150,13 @@ export async function openKeptLetter(
       .set({ openedAt: now })
       .where(and(eq(deliveries.id, row.deliveryId), isNull(deliveries.openedAt)))
   }
+  const returned = row.kind === 'return'
   return {
-    answerIn: await answerableFrom(db, mantelId, row),
+    answerIn: returned ? null : await answerableFrom(db, mantelId, row),
     sealed: false,
     letterId,
-    name: row.chosen ?? row.account ?? null,
+    kind: returned ? 'return' : 'letter',
+    name: (await namesFor(db, mantelId, [row]))(row),
     postmark: row.postmark,
     ciphertext: row.ciphertext,
     wrappedKey: key.wrappedKey,

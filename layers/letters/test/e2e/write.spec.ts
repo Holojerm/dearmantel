@@ -282,6 +282,17 @@ test('a kept mantel takes letters, and a sealed one stays sealed', async ({ brow
     }
     await ann.getByRole('link', { name: /From Leo/ }).click()
     await expect(ann.getByText(REPLY)).toBeVisible()
+
+    // ── A copy of Leo's letters now holds the one he wrote ───────────────────
+    await open(ann, `/mantels/${mantelId}`)
+    const savingAgain = ann.waitForEvent('download')
+    await ann.getByRole('button', { name: "Keep a copy of Leo's letters" }).click()
+    const both = (await readFile(await (await savingAgain).path())).toString('latin1')
+    expect(both).toContain('Letters to and from Leo')
+    expect(both).toContain(NOW_LETTER)
+    expect(both).toContain(REPLY)
+    expect(both).not.toContain(LATER_LETTER)
+    await expect(ann.getByText('Saved 2 letters. Left out: 1 letter still sealed.')).toBeVisible()
   } finally {
     await ann.request.post('/api/dev/clock', { data: { action: 'reset' } })
   }

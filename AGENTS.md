@@ -197,7 +197,11 @@ private key and refuses a server key that is not its pair), and `saveDraft` guar
 like any wrap to a mantel. The mantel writes only in correspondences it is already a member of,
 never in its news, and only a child's mantel writes. Never call `readPhoto` as the mantel,
 which would serve what it received past the seal: `ownPhoto` and `ownLetter` are author-only.
-A reply from the mantel may answer only a letter whose day has come (`saveDraft`). Anyone else writes after a keeper invites them: the same
+A reply from the mantel may answer only a letter whose day has come (`saveDraft`). A letter
+the mantel wrote that comes back is a `return` delivery to the mantel's id; keepers see and open
+it on the mantel's page through `kept-mantel.ts`, and a keeper's copy (`kept-archive.ts`) holds
+everything the mantel sealed (`kept-sent.ts`), once each. All of it stays keyed by the mantel's
+id, which is what handover moves to the child. Anyone else writes after a keeper invites them: the same
 invitation as between two people, with `invites.mantelId` set, its own email
 (`mantel-invite`), and acceptance making a correspondence with the mantel rather than with
 the keeper. A writer who is not a keeper reads nothing on the mantel, and no writer sees

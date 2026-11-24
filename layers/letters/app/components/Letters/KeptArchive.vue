@@ -1,6 +1,7 @@
 <script setup lang="ts">
-// A keeper's copy of a kept mantel's opened letters, made on this device with
-// this keeper's copy of the mantel's key. Sealed and unopened letters are
+// A keeper's copy of a kept mantel's opened letters, and of the letters a
+// child's mantel wrote, made on this device with this keeper's copy of the
+// mantel's key. Sealed and unopened letters are
 // left out: making a copy opens nothing.
 import type { KeptMantel } from '#layers/keys/app/composables/useMantelKeys'
 import { saveFile } from '#layers/post/app/utils/save-file'
@@ -9,13 +10,20 @@ import { fileSafe, type ArchiveSealed, type KeptArchive } from '../../../shared/
 import { buildArchive } from '../../utils/archive-build'
 import { unwrapContentKey } from '../../utils/letter-crypto'
 
-const props = defineProps<{ mantelId: string; name: string }>()
+// `wrote`: a child's mantel that has written back, whose own letters go in too.
+const props = defineProps<{ mantelId: string; name: string; wrote?: boolean }>()
 
 const mantelKeys = useMantelKeys()
 const site = useRuntimeConfig().public
 const working = ref(false)
 const progress = ref('')
 const outcome = ref<{ text: string; failed: boolean } | null>(null)
+
+const what = computed(() =>
+  props.wrote
+    ? `The letters that have been opened here and the letters ${props.name} wrote`
+    : 'The letters that have been opened here',
+)
 
 const count = (n: number) => `${n} ${n === 1 ? 'letter' : 'letters'}`
 
@@ -102,9 +110,8 @@ async function keep() {
   <div class="flex flex-col gap-2">
     <h3 class="mt-4 text-lg text-highlighted">Keep a copy</h3>
     <p class="text-sm text-muted">
-      The letters that have been opened here, as files you can read without {{ site.appName }}. The
-      copy is made on this device. Letters nobody has opened yet, and letters still sealed, are left
-      out.
+      {{ what }}, as files you can read without {{ site.appName }}. The copy is made on this device.
+      Letters nobody has opened yet, and letters still sealed, are left out.
     </p>
     <UButton
       class="self-start"

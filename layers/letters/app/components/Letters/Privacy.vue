@@ -41,7 +41,8 @@
       own device at any time, from the page called Keep a copy. The copy is put together in your
       browser and is not encrypted, so it is yours to look after. Making it shows us nothing we
       could not already see. Someone who keeps a mantel can save the letters that have been opened
-      on it in the same way; sealed and unopened letters are never in a copy.
+      on it in the same way, and for a child's mantel the letters it wrote; letters still sealed,
+      and letters that arrived and have not been opened, are never in a copy.
     </p>
     <p>
       <strong class="text-highlighted">Invitations.</strong> When you invite someone, we send one
