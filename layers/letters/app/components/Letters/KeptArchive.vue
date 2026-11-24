@@ -1,8 +1,8 @@
 <script setup lang="ts">
 // A keeper's copy of a kept mantel's opened letters, and of the letters a
 // child's mantel wrote, made on this device with this keeper's copy of the
-// mantel's key. Sealed and unopened letters are
-// left out: making a copy opens nothing.
+// mantel's key. Sealed and unopened letters are left out: making a copy opens
+// nothing.
 import type { KeptMantel } from '#layers/keys/app/composables/useMantelKeys'
 import { saveFile } from '#layers/post/app/utils/save-file'
 
