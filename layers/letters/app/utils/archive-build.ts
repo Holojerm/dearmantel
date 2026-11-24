@@ -5,6 +5,8 @@
 
 import {
   entryFileName,
+  sentTo,
+  shelfTitle,
   type ArchiveEntry,
   type ArchiveSealed,
   type ArchiveShelf,
@@ -119,10 +121,7 @@ export async function buildArchive(
   source: ArchiveSource = OWN_LETTERS,
 ): Promise<ArchiveResult> {
   const who = shelf.name || 'someone who has left'
-  const title =
-    { family: `Letters in ${who}`, kept: `Letters to ${who}`, news: `News of ${who}` }[
-      shelf.kind as string
-    ] ?? `Letters with ${who}`
+  const title = shelfTitle(shelf, who)
   const files: ZipFile[] = []
   const page: ArchivePageLetter[] = []
   let skipped = 0
@@ -136,9 +135,10 @@ export async function buildArchive(
       continue
     }
     const from = entry.from ?? opened.doc.from ?? (entry.guest ? 'a guest' : 'someone who has left')
-    const heading = entry.direction === 'sent' ? `To ${who}` : `From ${from}`
+    const to = sentTo(entry, who)
+    const heading = entry.direction === 'sent' ? `To ${to}` : `From ${from}`
     const when = entry.postmark ? `Postmarked ${yearDay(entry.postmark)}` : null
-    const base = entryFileName(index, entry, entry.direction === 'sent' ? who : from)
+    const base = entryFileName(index, entry, entry.direction === 'sent' ? to : from)
     const photoFile = opened.photo ? `photos/${base}.jpg` : null
     if (opened.photo && photoFile) {
       files.push({ name: photoFile, data: new Uint8Array(opened.photo) })
