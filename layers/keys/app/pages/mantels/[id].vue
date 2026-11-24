@@ -32,6 +32,9 @@ interface MantelView {
   publicKey: string
   keyVersion: number
   rekeyDue: boolean
+  recoveryProofHash: string | null
+  /** Another keeper replaced the recovery code since this keeper last looked. */
+  recoveryCodeReplacedAt: string | null
   wrappedKey: string | null
   handover: { previous: string; wrapped: string } | null
   keepers: Keeper[]
@@ -53,6 +56,8 @@ const failure = ref<string | null>(null)
 const canOpen = ref<boolean | null>(null)
 // Another keeper changed the key and this visit took the new one.
 const keyChanged = ref(false)
+// The server tells of a replaced code once; later reloads here keep it shown.
+const codeReplacedAt = ref<string | null>(null)
 const email = ref('')
 const role = ref<KeeperRole>('guardian')
 const busy = ref(false)
@@ -82,6 +87,7 @@ async function load() {
       keyChanged.value = true
       view = await fetchView()
     }
+    codeReplacedAt.value ??= view.recoveryCodeReplacedAt
     mantel.value = view
     role.value = view.kind === 'child' ? 'guardian' : 'partner'
     canOpen.value = Boolean(await mantelKeys.open(view))
@@ -194,6 +200,14 @@ useSeo({ title: 'A mantel you keep', description: 'Who keeps this mantel.', noin
         title="This mantel's key was changed"
         description="Another keeper changed it after someone stopped keeping this mantel. You now hold the new key and need do nothing. The recovery code printed before no longer works: ask them for the new one."
       />
+      <UAlert
+        v-if="codeReplacedAt && !keyChanged"
+        color="info"
+        variant="subtle"
+        icon="i-lucide-key-round"
+        title="This mantel's recovery code was replaced"
+        :description="`Another keeper made a new recovery code on ${day(codeReplacedAt)}. The code printed before no longer works: ask them for the new one. The key is the same, and you need do nothing else.`"
+      />
       <LettersMantelRekey
         v-if="canOpen"
         :mantel="mantel"
@@ -257,6 +271,14 @@ useSeo({ title: 'A mantel you keep', description: 'Who keeps this mantel.', noin
           keepers, that is both.
         </p>
       </section>
+
+      <!-- While a re-key is due, changing the key makes the new code. -->
+      <MantelRecoveryCode
+        v-if="canOpen && !mantel.rekeyDue"
+        :mantel="mantel"
+        :other-keepers="mantel.keepers.length - 1"
+        @done="load"
+      />
 
       <section
         v-if="mantel.proposals.length"

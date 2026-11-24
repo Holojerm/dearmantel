@@ -11,6 +11,7 @@ import { postNow } from '#layers/post/server/utils/clock'
 import { proposalsOf } from '../../utils/custody'
 import { getMantel } from '../../utils/mantels'
 import { recoveriesOf } from '../../utils/recovery'
+import { takeRecoveryCodeNotice } from '../../utils/recovery-code'
 
 const bodySchema = z.object({ id: z.string().uuid() })
 
@@ -42,5 +43,9 @@ export default defineEventHandler(async (event) => {
     keepers: mantel.keepers.map((keeper) => ({ ...keeper, name: nameOf(keeper.userId) })),
     proposals: proposals.map((proposal) => ({ ...proposal, name: nameOf(proposal.subjectId) })),
     recoveries: await recoveriesOf(db, user.id, id),
+    // `recoveryProofHash` (from getMantel) lets this keeper's browser tell
+    // whether a code it made is the mantel's code. It is a hash of a value
+    // derived from the code, and a keeper holds the key itself.
+    recoveryCodeReplacedAt: (await takeRecoveryCodeNotice(db, user.id, id))?.toISOString() ?? null,
   }
 })
