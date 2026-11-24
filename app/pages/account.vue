@@ -75,26 +75,51 @@ const { pending: exportPending, run: downloadData } = useAsyncAction(
 const deleteOpen = ref(false)
 const deletePending = ref(false)
 const confirmEmailInput = ref('')
+// A mantel's only keeper is refused until they show each mantel's recovery
+// code (layers/keys/server/utils/sole-keeper.ts). The refusal names the
+// mantels, and the dialog asks for the codes before it can be confirmed.
+const soleKept = ref<{ id: string; name: string; kind: string }[] | null>(null)
+const mantelRecoveryProofs = ref<Record<string, string> | null>(null)
+const deleteRefusal = ref<string | null>(null)
 const canConfirmDelete = computed(
-  () => confirmEmailInput.value.trim().toLowerCase() === (user.value?.email ?? '').toLowerCase(),
+  () =>
+    confirmEmailInput.value.trim().toLowerCase() === (user.value?.email ?? '').toLowerCase() &&
+    (!soleKept.value || Boolean(mantelRecoveryProofs.value)),
 )
 
 function openDeleteModal(): void {
   confirmEmailInput.value = ''
+  soleKept.value = null
+  mantelRecoveryProofs.value = null
+  deleteRefusal.value = null
   deleteOpen.value = true
 }
 
+const KEEPER_REFUSALS = ['sole_mantel_keeper', 'mantel_recovery_code_mismatch']
+
 async function confirmDelete(): Promise<void> {
   deletePending.value = true
+  deleteRefusal.value = null
   try {
     await $fetch('/api/account/delete', {
       method: 'POST',
-      body: { confirmEmail: confirmEmailInput.value },
+      body: {
+        confirmEmail: confirmEmailInput.value,
+        mantelRecoveryProofs: mantelRecoveryProofs.value ?? undefined,
+      },
     })
     deleteOpen.value = false
     await clearSession()
     await navigateTo('/')
-  } catch {
+  } catch (error) {
+    const refusal = (error as { data?: { message?: string; data?: Record<string, unknown> } }).data
+    if (refusal?.data && KEEPER_REFUSALS.includes(String(refusal.data.code))) {
+      soleKept.value = refusal.data.kept as { id: string; name: string; kind: string }[]
+      if (refusal.data.code === 'mantel_recovery_code_mismatch') {
+        deleteRefusal.value = refusal.message ?? null
+      }
+      return
+    }
     toast.add({
       title: 'Could not delete your account',
       description: 'Something went wrong. Try again, or reply to any email from us.',
@@ -242,6 +267,17 @@ useSeo({
               autocomplete="off"
             />
           </UFormField>
+          <template v-if="soleKept">
+            <USeparator />
+            <SoleKeeperCodes v-model:proofs="mantelRecoveryProofs" :mantels="soleKept" />
+            <UAlert
+              v-if="deleteRefusal"
+              color="error"
+              variant="subtle"
+              icon="i-lucide-circle-alert"
+              :description="deleteRefusal"
+            />
+          </template>
         </div>
       </template>
 

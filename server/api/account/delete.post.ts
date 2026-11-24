@@ -23,10 +23,24 @@ import { z } from 'zod'
 
 const bodySchema = z.object({
   confirmEmail: z.string().trim().email(),
+  // A mantel's only keeper shows they hold each mantel's recovery code: the
+  // proof it derives in their browser, by mantel id. The keys layer's
+  // deletion guard checks it against the mantel's stored hash.
+  mantelRecoveryProofs: z
+    .record(z.string().uuid(), z.string().regex(/^[A-Za-z0-9_-]{43}$/))
+    .refine((proofs) => Object.keys(proofs).length <= 20)
+    .optional(),
 })
 
 export default defineEventHandler(async (event) => {
   const { user } = await requireUserSession(event)
+  // Limited like the other routes that check a mantel's recovery proof.
+  await rateLimit(event, {
+    name: 'account-delete',
+    identifier: user.id,
+    limit: 10,
+    windowSeconds: 600,
+  })
   const body = await readValidatedBody(event, bodySchema.parse)
 
   if (normalizeEmail(body.confirmEmail) !== normalizeEmail(user.email)) {
@@ -39,7 +53,10 @@ export default defineEventHandler(async (event) => {
 
   // The request context the guards and resolvers audit with: billing's cancel
   // row records the same salted IP hash the other audit rows carry.
-  const outcome = await deleteAccount(db, user.id, { ipHash: await clientIpHash(event) })
+  const outcome = await deleteAccount(db, user.id, {
+    ipHash: await clientIpHash(event),
+    mantelRecoveryProofs: body.mantelRecoveryProofs,
+  })
 
   if (outcome.outcome === 'not_found') {
     // Unreachable in practice — the session already proves the row exists —
