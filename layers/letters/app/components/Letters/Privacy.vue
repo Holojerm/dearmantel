@@ -81,7 +81,10 @@
       opens the key in the browser of whoever types it and is never sent to us; what we receive is a
       value derived from it that proves they hold it. A keeper who uses it gets their own access
       back. Anyone else is asking to become a keeper: every keeper is emailed, and it takes effect
-      after 30 days unless one of them cancels. When someone stops keeping a mantel we delete their
+      after 30 days unless one of them cancels. A keeper can make a new code in their browser from
+      the key they hold: we replace the copy locked under the old code, so the old code opens
+      nothing we hold, and the other keepers are told. The key itself stays the same, so anyone who
+      already used the old code still has it. When someone stops keeping a mantel we delete their
       copy, but they were given the key and may have kept it. The keepers who remain are asked to
       change the key, which is done in one of their browsers. Once it is changed, the old key opens
       nothing we hold, and the recovery code printed before stops working. Until then it could, if
