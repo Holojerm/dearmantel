@@ -8,9 +8,12 @@ import { beforeEach, describe, expect, it } from 'vitest'
 
 import * as schema from '~~/server/db/schema'
 
+import { closeCorrespondence } from '../server/utils/closing'
 import { openMantelCorrespondence } from '../server/utils/correspondences'
 import { ownLetter, saveDraft } from '../server/utils/drafts'
-import { openKeptLetter } from '../server/utils/kept-mantel'
+import { listKeptArchive, readKeptForArchive } from '../server/utils/kept-archive'
+import { listKeptMantel, openKeptLetter } from '../server/utils/kept-mantel'
+import { countSent } from '../server/utils/kept-sent'
 import { listMantel, openLetter } from '../server/utils/mantel'
 import { mantelOutbox, writingAs } from '../server/utils/mantel-author'
 import { openingsView, setMantelOpenings } from '../server/utils/openings'
@@ -65,8 +68,12 @@ async function toLeo(id: string, opensOn: string | null = null) {
   return sealLetter(db, 'eve', id, 'key-for-leo', MONDAY, opensOn, false, { [LEO]: 'leo-key' })
 }
 
+// Only what is still on its way: a delivery that went back stays returned.
 const deliverAll = () =>
-  db.update(deliveries).set({ state: 'delivered', deliveredAt: FRIDAY, mailDate: '2026-11-20' })
+  db
+    .update(deliveries)
+    .set({ state: 'delivered', deliveredAt: FRIDAY, mailDate: '2026-11-20' })
+    .where(eq(deliveries.state, 'in_transit'))
 
 beforeEach(async () => {
   for (const table of [
@@ -261,6 +268,30 @@ describe('the mantel writing back', () => {
     expect(await reply(4, 1)).toBe('saved')
   })
 
+  it('comes back to the mantel’s page when it cannot be delivered', async () => {
+    await draft(LEO, letterId(1), eveToLeo, { authorKey: 'leo-key' })
+    await sealLetter(db, LEO, letterId(1), 'k-eve', MONDAY)
+    expect(await closeCorrespondence(db, 'eve', eveToLeo, MONDAY)).toBe('closed')
+    // Nothing shows before the return's own release, like any post.
+    expect(await listKeptMantel(db, 'ann', LEO, FRIDAY)).toEqual([])
+    await deliverAll()
+    expect(await listKeptMantel(db, 'eve', LEO, FRIDAY)).toBeNull()
+    expect(await listKeptMantel(db, 'bob', LEO, FRIDAY)).toMatchObject([
+      { letterId: letterId(1), kind: 'return', name: 'Granny Eve', opened: false, sealed: false },
+    ])
+    expect(await openKeptLetter(db, 'eve', LEO, letterId(1), FRIDAY)).toBeNull()
+    // Opened with the mantel's own copy of the key, and not to be answered.
+    expect(await openKeptLetter(db, 'bob', LEO, letterId(1), FRIDAY)).toMatchObject({
+      sealed: false,
+      kind: 'return',
+      name: 'Granny Eve',
+      wrappedKey: `key-for-${LEO}`,
+      answerIn: null,
+    })
+    expect(await listKeptMantel(db, 'ann', LEO, FRIDAY)).toMatchObject([{ opened: true }])
+    expect(await listMantel(db, 'eve')).toEqual([])
+  })
+
   it('does not write in a keeper’s place where it is not a member', async () => {
     const pair = crypto.randomUUID()
     await db.insert(correspondences).values({ id: pair })
@@ -270,5 +301,57 @@ describe('the mantel writing back', () => {
     ])
     expect(await draft(LEO, letterId(1), pair, { authorKey: 'leo-key' })).toBe('closed')
     expect(await planSeal(db, LEO, annToLeo, MONDAY)).toMatchObject({ recipientId: 'ann' })
+  })
+})
+
+describe('a keeper’s copy of a mantel that writes', () => {
+  beforeEach(async () => {
+    await toLeo(letterId(1))
+    await draft(LEO, letterId(2), eveToLeo, { authorKey: 'leo-key' })
+    await sealLetter(db, LEO, letterId(2), 'k-eve', MONDAY)
+    await draft(LEO, letterId(3), annToLeo, { authorKey: 'leo-key' })
+    await db
+      .update(letters)
+      .set({ postmarkDate: '2026-11-16' })
+      .where(eq(letters.id, letterId(1)))
+    await db
+      .update(letters)
+      .set({ postmarkDate: '2026-11-17' })
+      .where(eq(letters.id, letterId(2)))
+    await deliverAll()
+    await openKeptLetter(db, 'ann', LEO, letterId(1), FRIDAY)
+  })
+
+  it('holds what the mantel wrote beside what it received, never a draft', async () => {
+    expect(await countSent(db, LEO)).toBe(1)
+    expect((await listKeptArchive(db, 'bob', LEO, FRIDAY))!.entries).toEqual([
+      {
+        id: letterId(1),
+        direction: 'received',
+        from: 'Granny Eve',
+        postmark: '2026-11-16',
+        guest: false,
+      },
+      { id: letterId(2), direction: 'sent', from: null, postmark: '2026-11-17', to: 'Granny Eve' },
+    ])
+    expect(await readKeptForArchive(db, 'bob', LEO, letterId(2), FRIDAY)).toEqual({
+      ciphertext: CIPHERTEXT,
+      wrappedKey: `key-for-${LEO}`,
+      hasPhoto: false,
+    })
+    expect(await readKeptForArchive(db, 'bob', LEO, letterId(3), FRIDAY)).toBeNull()
+    expect(await readKeptForArchive(db, 'eve', LEO, letterId(2), FRIDAY)).toBeNull()
+    expect(await listKeptArchive(db, 'eve', LEO, FRIDAY)).toBeNull()
+  })
+
+  it('holds a letter that came back once, as one the mantel wrote', async () => {
+    await draft(LEO, letterId(4), eveToLeo, { authorKey: 'leo-key' })
+    await sealLetter(db, LEO, letterId(4), 'k-eve', FRIDAY)
+    await closeCorrespondence(db, 'eve', eveToLeo, FRIDAY)
+    await deliverAll()
+    const entries = (await listKeptArchive(db, 'ann', LEO, FRIDAY))!.entries
+    expect(entries.filter((entry) => entry.id === letterId(4))).toMatchObject([
+      { direction: 'sent', to: 'Granny Eve' },
+    ])
   })
 })

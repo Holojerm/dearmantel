@@ -18,6 +18,7 @@ interface City {
 
 const post = ref<KeptPost | null>(null)
 const letters = ref<KeptItem[]>([])
+const sent = ref(0)
 const openings = ref<OpeningsView | null>(null)
 const writers = ref<{ userId: string; name: string; keeper: boolean }[]>([])
 const invited = ref<{ id: string; email: string }[]>([])
@@ -37,6 +38,7 @@ async function load() {
     const view = await $fetch<{
       post: typeof post.value
       letters: KeptItem[]
+      sent: number
       writers: typeof writers.value
       invited: typeof invited.value
       openings: OpeningsView
@@ -44,6 +46,7 @@ async function load() {
     openings.value = view.openings
     post.value = view.post
     letters.value = view.letters
+    sent.value = view.sent
     writers.value = view.writers
     invited.value = view.invited
   } catch (error) {
@@ -138,6 +141,27 @@ async function writerAction(body: Record<string, string>) {
   }
 }
 
+// A return is the mantel's own letter that could not be delivered.
+function title(letter: KeptItem): string {
+  if (letter.kind === 'return') {
+    return letter.name
+      ? `Returned: ${props.name}'s letter to ${letter.name}`
+      : `Returned: ${props.name}'s letter`
+  }
+  return letter.name ? `From ${letter.name}` : letter.guest ? 'A guest letter' : 'A letter'
+}
+
+function readLabel(letter: KeptItem): string {
+  if (letter.kind === 'return') {
+    return `Read the returned letter${letter.name ? ` to ${letter.name}` : ''}`
+  }
+  return `Read the letter${letter.name ? ` from ${letter.name}` : ''}`
+}
+
+const canCopy = computed(
+  () => sent.value > 0 || letters.value.some((letter) => letter.opened && !letter.sealed),
+)
+
 function describe(letter: KeptItem): string {
   if (letter.sealed && letter.opensOn) return `Sealed. Opens ${yearDay(letter.opensOn)}.`
   const postmark = letter.postmark ? `Postmarked ${longDay(letter.postmark)}.` : ''
@@ -199,11 +223,7 @@ function describe(letter: KeptItem): string {
           class="flex items-center justify-between gap-4 py-3"
         >
           <div class="min-w-0">
-            <p class="text-highlighted">
-              {{
-                letter.name ? `From ${letter.name}` : letter.guest ? 'A guest letter' : 'A letter'
-              }}
-            </p>
+            <p class="text-highlighted">{{ title(letter) }}</p>
             <p class="text-sm text-muted">{{ describe(letter) }}</p>
           </div>
           <UButton
@@ -212,7 +232,7 @@ function describe(letter: KeptItem): string {
             variant="outline"
             color="neutral"
             :to="`/kept/${mantelId}/${letter.letterId}`"
-            :aria-label="`Read the letter${letter.name ? ` from ${letter.name}` : ''}`"
+            :aria-label="readLabel(letter)"
           >
             Read
           </UButton>
@@ -220,11 +240,7 @@ function describe(letter: KeptItem): string {
         </li>
       </ul>
 
-      <LettersKeptArchive
-        v-if="letters.some((letter) => letter.opened && !letter.sealed)"
-        :mantel-id="mantelId"
-        :name="name"
-      />
+      <LettersKeptArchive v-if="canCopy" :mantel-id="mantelId" :name="name" :wrote="sent > 0" />
 
       <LettersMantelWrites v-if="kind === 'child'" :mantel-id="mantelId" :name="name" />
 

@@ -2,7 +2,9 @@
 
 export interface KeptItem {
   letterId: string
-  /** Who wrote it. Null when that account is gone. */
+  /** 'letter' arrived for the mantel; 'return' is a letter a child's mantel wrote, come back. */
+  kind: 'letter' | 'return'
+  /** Who wrote it, or for a return who it was for. Null when that account is gone. */
   name: string | null
   /** 'YYYY-MM-DD', the sender's calendar. */
   postmark: string | null
@@ -21,6 +23,8 @@ export type KeptLetter =
   | {
       sealed: false
       letterId: string
+      kind: 'letter' | 'return'
+      /** Who wrote it, or for a return who it was for. */
       name: string | null
       postmark: string | null
       ciphertext: string

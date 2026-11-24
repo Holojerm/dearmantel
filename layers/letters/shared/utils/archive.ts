@@ -10,6 +10,11 @@ export interface ArchiveEntry {
   postmark: string | null
   /** Written from a write link, by someone with no account. */
   guest?: boolean
+  /**
+   * Who a sent letter went to, when the shelf's name is not them: a kept
+   * mantel's shelf is named for the child, who wrote it. Null when they have gone.
+   */
+  to?: string | null
 }
 
 export interface ArchiveShelf {
@@ -49,6 +54,23 @@ export function fileSafe(text: string): string {
     .slice(0, 60)
     .trim()
   return cleaned || 'letter'
+}
+
+/** Who a sent letter went to: the shelf's other person, unless the entry names its own. */
+export function sentTo(entry: ArchiveEntry, who: string): string {
+  if (entry.to === undefined) return who
+  return entry.to ?? 'someone who has left'
+}
+
+/** The copy's title. `who` is the shelf's name, or a stand-in when it has none. */
+export function shelfTitle(shelf: Pick<ArchiveShelf, 'kind' | 'entries'>, who: string): string {
+  if (shelf.kind === 'kept') {
+    const wrote = shelf.entries.some((entry) => entry.direction === 'sent')
+    return wrote ? `Letters to and from ${who}` : `Letters to ${who}`
+  }
+  if (shelf.kind === 'family') return `Letters in ${who}`
+  if (shelf.kind === 'news') return `News of ${who}`
+  return `Letters with ${who}`
 }
 
 /** "003 2026-11-20 from Ann Lee": in order, dated, and readable in a file list. */
