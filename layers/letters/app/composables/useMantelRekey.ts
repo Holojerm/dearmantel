@@ -13,6 +13,11 @@ import {
   wrapMantelKeyUnderCode,
 } from '#layers/keys/app/utils/mantel-crypto'
 import type { KeptMantel } from '#layers/keys/app/composables/useMantelKeys'
+import {
+  readPendingCode,
+  writePendingCode,
+  type PendingCode,
+} from '#layers/keys/app/utils/pending-recovery-code'
 import { formatRecoveryCode, RECOVERY_CODE_BYTES } from '#layers/keys/shared/utils/key-format'
 
 import { rewrapLetterKeys, type HeldLetterKey } from '../utils/rekey-letters'
@@ -32,39 +37,11 @@ export type RekeyOutcome =
 // stores nothing and this starts again from what is there now.
 const ATTEMPTS = 3
 
-// The new recovery code is the one thing made here that cannot be made again:
-// once the server has stored the new key, the old code is dead. So the code
-// is written to this device before the request goes, and stays until the
-// keeper confirms they have kept it. A reply that never arrives, or a tab
-// closed too soon, then loses nothing: the mantel's page shows it again.
-const pendingName = (mantelId: string) => `dearmantel:rekey-code:${mantelId}`
-
-interface PendingCode {
-  /** The key the code belongs to. It counts only once that is the mantel's key. */
-  publicKey: string
-  code: string
-}
-
-function readPending(mantelId: string): PendingCode | null {
-  try {
-    const stored = JSON.parse(localStorage.getItem(pendingName(mantelId)) ?? 'null') as unknown
-    const { publicKey, code } = (stored ?? {}) as Partial<PendingCode>
-    return typeof publicKey === 'string' && typeof code === 'string' ? { publicKey, code } : null
-  } catch {
-    return null
-  }
-}
-
-// Storage can refuse (a private window). The re-key still works; only the
-// second chance to see the code is lost.
-function writePending(mantelId: string, pending: PendingCode | null) {
-  try {
-    if (pending) localStorage.setItem(pendingName(mantelId), JSON.stringify(pending))
-    else localStorage.removeItem(pendingName(mantelId))
-  } catch {
-    // Nothing to do.
-  }
-}
+// The new recovery code stays on this device until the keeper confirms they
+// have it (pending-recovery-code.ts).
+const readPending = (mantelId: string) => readPendingCode('rekey', mantelId)
+const writePending = (mantelId: string, pending: PendingCode | null) =>
+  writePendingCode('rekey', mantelId, pending)
 
 export function useMantelRekey() {
   const { user } = useUserSession()
