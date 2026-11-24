@@ -133,8 +133,15 @@ server cannot make. A mantel's last keeper cannot delete their account. The reco
 the hash of a proof the code derives (`recoveryProof`). A keeper who uses it replaces their
 own copy of the key at once. Anyone else waits `RECOVERY_WAIT_DAYS` while every keeper is
 emailed (`mantel-recovery`) and any of them can cancel. Do not add a path that writes
-`mantel_keepers` or `mantel_key_wraps` outside `custody.ts`, `mantels.ts`, `recovery.ts` and
-`rekey.ts`.
+`mantel_keepers` or `mantel_key_wraps` outside `custody.ts`, `mantels.ts`, `recovery.ts`,
+`recovery-code.ts` and `rekey.ts`.
+
+A new recovery code without a new key (`recovery-code.ts`, `MantelRecoveryCode` on the
+mantel's page): for a printed code that was lost or seen. There is one code a mantel, so the
+'recovery' copy and `recoveryProofHash` are replaced in one guarded batch, open claims on the
+old code are cancelled, and every other keeper is told once (`recoveryCodeReplacedAt`). It is
+refused while a re-key is due, which makes a new code anyway. It cannot take back a key that
+already got out; the page says so.
 
 Re-keying a mantel (`rekey.ts`, and `layers/letters/server/utils/kept-rekey.ts` for the letter
 keys): a keeper who leaves, by a vote or by deleting their account, may still hold the
