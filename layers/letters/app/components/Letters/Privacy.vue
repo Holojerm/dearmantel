@@ -85,7 +85,10 @@
       copy, but they were given the key and may have kept it. The keepers who remain are asked to
       change the key, which is done in one of their browsers. Once it is changed, the old key opens
       nothing we hold, and the recovery code printed before stops working. Until then it could, if
-      our database were ever copied.
+      our database were ever copied. A mantel's only keeper can delete their account after typing
+      its recovery code, which is checked in their browser; we receive only the value derived from
+      it. The mantel and its letters stay, with nobody keeping them, and only that code opens them
+      again.
     </p>
     <p>
       <strong class="text-highlighted">Letters from a child's mantel.</strong> A keeper can write as
