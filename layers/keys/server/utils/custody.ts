@@ -14,6 +14,7 @@ import { normalizeEmail } from '#server/utils/users'
 
 import { carries, PROPOSAL_TTL_DAYS, type KeeperRole } from '../../shared/utils/mantel-format'
 import { batchGuard, isGuardFailure, mantelKeyVersionIs } from './batch-guard'
+import { keeperRemovalStatements } from './keeper-removal'
 import type { KeysDb } from './keys'
 import { keepersOf } from './mantels'
 
@@ -167,6 +168,12 @@ async function applyRemovalIfCarried(db: KeysDb, proposalId: string, now: Date):
       .update(mantelProposals)
       .set({ outcome: 'done', settledAt: now, updatedAt: now })
       .where(and(eq(mantelProposals.id, proposalId), isNull(mantelProposals.outcome))),
+    // Their other ways in, such as the letters they wrote as a keeper.
+    ...keeperRemovalStatements(db, {
+      mantelId: proposal.mantelId,
+      userId: proposal.subjectId,
+      now,
+    }),
   ])
   return true
 }

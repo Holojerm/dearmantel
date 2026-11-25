@@ -7,7 +7,6 @@ import {
   parseRecoveryCode,
   RECOVERY_CODE_BYTES,
 } from '../../shared/utils/key-format'
-import { importPrivateKey, publicKeyOf } from '../utils/key-crypto'
 import { recoveryProof, recoveryProofHash, wrapMantelKeyUnderCode } from '../utils/mantel-crypto'
 import { readPendingCode, writePendingCode } from '../utils/pending-recovery-code'
 import type { KeptMantel } from './useMantelKeys'
@@ -31,11 +30,10 @@ export function useMantelRecoveryCode() {
 
   /** Returns the mantel's new recovery code, to be shown once. */
   async function makeNew(mantel: CurrentMantel): Promise<NewCodeOutcome> {
+    // Only the mantel's own key may be locked under its code, and `open`
+    // gives no other.
     const key = await mantelKeys.open(mantel)
-    // Only the mantel's own key may be locked under its code.
-    if (!key || (await publicKeyOf(await importPrivateKey(key))) !== mantel.publicKey) {
-      return { status: 'cannot-open' }
-    }
+    if (!key) return { status: 'cannot-open' }
     const secret = crypto.getRandomValues(new Uint8Array(RECOVERY_CODE_BYTES))
     const proofHash = await recoveryProofHash(await recoveryProof(secret))
     const code = formatRecoveryCode(secret)
