@@ -89,7 +89,7 @@ async function take() {
       <template v-else-if="!handover.keyGiven">
         <p class="text-sm text-muted">
           You accepted. Now read these to one of its keepers, by phone or in person. They see the
-          same on their screen, and then hand you the key.
+          same on their screen, and then hand you the key. Open this page again once they have.
         </p>
         <p
           v-if="fingerprint"
