@@ -82,6 +82,9 @@ whole of the navigation.
 | **People** | `/people`, `/family/<id>` | Who you write with, your families, and invitations. |
 | **Room** | `/rooms`, `/room/<family>/…` | A family's shared room: photos, where everyone is, the gazette. |
 
+Explanation is not a place. The pages that say how each part works live at `/how`, are public,
+and are reached from the landing page and the footer, never from the four places.
+
 Everything else is upkeep and lives in the menu: **Your post** (mail days, hour, city),
 **Mantels you keep**, **Keep a copy**, **Account**, light or dark, **Sign out**.
 
@@ -98,7 +101,7 @@ Everything else is upkeep and lives in the menu: **Your post** (mail days, hour,
 - **Writing is quiet.** On `/write` and the guest's writing page the phone bar is hidden:
   the page is the paper, and the keyboard needs the room.
 - **The mark goes home:** to the mantel when signed in, to the landing page when not.
-- **The footer is one quiet line** on every page: legal links, support, feedback. No floating
+- **The footer is one quiet line** on every page: how it works, legal links, support, feedback. No floating
   buttons: nothing sits on top of what someone is reading.
 - Never let the header wrap to two lines or scroll sideways.
 
@@ -216,6 +219,11 @@ and it is what keeps them ours.
 | **Postbox** | The desk, the send-off | Wiggles when a letter goes in. |
 | **Envelope** | The landing page, the send-off | Rides the rail down the page; takes its stamp. |
 | **Squiggle** | Under one word of the landing headline | Draws itself once. |
+| **Key** | The explainer pages | What opens letters. Printed in clay for a person's key, kraft for a mantel's. |
+| **Sheet** | The explainer pages | A letter three ways: written, as the server holds it (blocks where the lines were), and a printed recovery code. |
+| **Card** | The explainer pages | The card on a wedding table, with its square code. |
+| **Print** | The explainer pages | A photo from the family room. |
+| **Leaf** | The explainer pages | A calendar leaf showing the day a sealed letter opens. The words beside it say the same date. |
 
 ### The little things
 
@@ -229,6 +237,23 @@ and it is what keeps them ours.
 - The who-can-read label is set like a rubber stamp, not quite straight.
 - Selected text is highlighted in blush.
 - A missing page says "Nothing was ever posted here", beside the postbox and the cat.
+
+### Diagrams
+
+The explainer pages (`/how` and the pages under it, in `layers/how`) explain with drawings.
+A diagram is made of the house's own objects and follows every rule above, plus these:
+
+- **A person is drawn as their mantel**: a short shelf with one thing standing on it, and
+  their name under it. Never a figure, a face or an avatar.
+- **A place is a dashed box with its name over it**: "Your browser", "Our server". What is
+  inside the line is there and nowhere else, which is how a diagram says what we do not hold.
+- **Labels are set like postmarks** and never move. Only drawings move.
+- **The words say everything.** A diagram is hidden from assistive technology, and the prose
+  under it states each thing it shows. A page read with its diagrams removed is complete.
+- **Scrolling is the days going by** (see Motion › A diagram keeps pace). A diagram at rest is
+  the finished picture: the letter arrived, every day inked in.
+- Encrypted and not encrypted are still told apart by words, in a diagram too. A key is drawn
+  where a key is the subject; it never stands beside a claim as a badge.
 
 A new little thing has to pass three tests: it is true to the house (a clock, not a rocket),
 it never delays or covers what someone came to do, and the page is complete without it.
@@ -503,6 +528,7 @@ Two curves and a short list of things that move. Anything not on the list does n
 | **The send-off** | A letter is sealed | Envelope pops in, stamp lands at 350ms, letter drops into the postbox at 950ms, postbox wiggles. Two seconds, then the desk | Skipped entirely |
 | **The bar hops** | Arriving at a place | 5px up and back, 400ms spring | Off |
 | **Content rises** | Scrolled into view | 16px and a fade, linked to scrolling where the browser can; otherwise it is simply there | Off |
+| **A diagram keeps pace** | Scrolling an explainer page | Each drawing moves over its own stretch of its scene's way across the window: a letter along its road, a day inked in, a copy appearing. Linked to scrolling, no script, never pinned | Off: the finished diagram is simply there |
 | **The rail envelope** | Scrolling the landing page | Stuck to the middle of the window inside its rail, so scrolling carries it. No script | Kept (it is scrolling) |
 | **A print straightens** | Hover on a room photo | To 0° and up 4px, 200ms spring | Kept |
 | **A pin lands** | The map appears | Scale from 0.6, 420ms spring, 90ms apart, once | Off |

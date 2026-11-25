@@ -81,6 +81,9 @@ const house = [
   },
 ]
 
+// The explainer pages (layers/how), listed under the house.
+const howPages = useHowPages()
+
 // The letter shown on this page is a real one, drawn by the same component
 // that draws every letter (DESIGN.md › Imagery).
 const specimen = {
@@ -126,9 +129,12 @@ useSeo({
         {{ config.public.appName }} is for writing to the people you already know, at the pace of
         the post. A letter takes days to arrive, so nobody has to answer quickly.
       </p>
-      <UButton :to="loggedIn ? '/mantel' : '/auth/sign-up'" size="lg">
-        {{ loggedIn ? 'Open your mantel' : 'Start writing' }}
-      </UButton>
+      <div class="flex flex-wrap items-center justify-center gap-3">
+        <UButton :to="loggedIn ? '/mantel' : '/auth/sign-up'" size="lg">
+          {{ loggedIn ? 'Open your mantel' : 'Start writing' }}
+        </UButton>
+        <UButton to="/how" size="lg" color="neutral" variant="outline">See how it works</UButton>
+      </div>
 
       <!-- The mantel, with the post in. -->
       <div class="mt-4 w-full max-w-2xl" aria-hidden="true">
@@ -210,6 +216,11 @@ useSeo({
           </li>
         </ol>
       </div>
+      <p class="play-rise">
+        <ULink to="/how/letters" class="text-primary underline underline-offset-2">
+          The whole journey, drawn out
+        </ULink>
+      </p>
     </section>
 
     <section class="band bg-muted px-4 py-16 sm:py-24">
@@ -251,6 +262,17 @@ useSeo({
           <dd class="text-default">{{ place.description }}</dd>
         </div>
       </dl>
+      <!-- One page for each kind of mantel and each thing they share. -->
+      <nav aria-label="How it works" class="play-rise flex flex-col gap-4">
+        <h3 class="text-xl text-highlighted">How each part works</h3>
+        <ul class="grid gap-x-8 gap-y-2 sm:grid-cols-2">
+          <li v-for="page in howPages" :key="page.path">
+            <ULink :to="page.path" class="text-primary underline underline-offset-2">
+              {{ page.title }}
+            </ULink>
+          </li>
+        </ul>
+      </nav>
     </section>
 
     <section class="band bg-paper-cream px-4 py-16 sm:py-24">
