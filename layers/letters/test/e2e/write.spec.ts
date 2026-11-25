@@ -501,3 +501,96 @@ test('a child’s mantel is handed over, and its keeper keeps nothing', async ({
 
   await close()
 })
+
+// A letter a child's mantel wrote comes back to it: Bob writes to Leo, Leo
+// writes back with Ann holding the pen, and Bob stops writing before the
+// answer arrives. It returns to Leo's mantel, where its keeper can read it
+// and cannot answer it.
+const TO_LEO = 'Dear Leo, the dog sends his regards.'
+const FROM_LEO = 'Dear Bob, tell the dog I said hello.'
+
+test('a letter from a kept mantel comes back to it', async ({ browser, baseURL }) => {
+  test.setTimeout(240_000)
+  const { ann, bob, close } = await makePair(browser, baseURL!)
+
+  // ── Ann opens Leo's mantel, gives it its post and asks Bob to write ────────
+  await open(ann, '/mantels/new')
+  await ann.getByLabel('Whose mantel is it?').fill('Leo')
+  await ann.getByRole('button', { name: 'Open the mantel' }).click()
+  await ann.getByLabel('I have kept my recovery code somewhere safe').check()
+  await ann.getByRole('button', { name: 'Continue' }).click()
+  await ann.waitForURL(/\/mantels\/[0-9a-f-]{36}$/)
+  const mantelId = new URL(ann.url()).pathname.split('/').pop()!
+  await ann.getByLabel("The mantel's city").fill('Chicago')
+  await ann
+    .getByRole('button', { name: /^Chicago/ })
+    .first()
+    .click()
+  const session = (await (await bob.request.get('/api/_auth/session')).json()) as {
+    user: { email: string }
+  }
+  await ann.getByLabel('Invite a writer by email').fill(session.user.email)
+  await ann.getByRole('button', { name: 'Send invitation' }).click()
+  const link = new URL((await ann.getByTestId('writer-invite-link').innerText()).trim())
+  await open(bob, link.pathname)
+  await bob.getByRole('button', { name: 'Accept the invitation' }).click()
+  await bob.waitForURL('**/write?to=*')
+
+  try {
+    // ── Bob writes to Leo, and it arrives on the mantel ──────────────────────
+    await bob.getByLabel('Your letter').fill(TO_LEO)
+    await expect(bob.getByText('Saved, encrypted on this device.')).toBeVisible()
+    await bob.getByRole('button', { name: 'Seal the letter' }).click()
+    await bob.getByRole('button', { name: 'Seal and post' }).click()
+    await bob.waitForURL('**/desk')
+    for (let day = 0; day < 6; day += 1) {
+      await ann.request.post('/api/dev/clock', { data: { action: 'mail-day', userId: mantelId } })
+      await open(ann, `/mantels/${mantelId}`)
+      if (await ann.getByText('From Bob Tester', { exact: true }).count()) break
+    }
+
+    // ── Leo writes back ───────────────────────────────────────────────────────
+    await ann.getByRole('link', { name: 'Read the letter from Bob Tester' }).click()
+    await expect(ann.getByText(TO_LEO)).toBeVisible()
+    await ann.getByRole('link', { name: 'Write back as Leo' }).click()
+    await expect(
+      ann.getByRole('heading', { name: 'A letter from Leo to Bob Tester' }),
+    ).toBeVisible()
+    await ann.getByLabel('Your letter').fill(FROM_LEO)
+    await expect(ann.getByText('Saved, encrypted on this device.')).toBeVisible()
+    await ann.getByRole('button', { name: 'Seal the letter' }).click()
+    await ann.getByRole('button', { name: 'Seal and post' }).click()
+    await ann.waitForURL(`**/mantels/${mantelId}`)
+
+    // ── Bob stops writing to Leo while the answer is on its way ──────────────
+    await open(bob, '/people')
+    await bob.getByRole('button', { name: 'Stop writing with Leo' }).click()
+    await bob.getByRole('button', { name: 'Stop writing', exact: true }).click()
+    await expect(bob.getByRole('button', { name: 'Stop writing with Leo' })).toHaveCount(0)
+
+    // ── It comes back with the mantel's own post ─────────────────────────────
+    const returned = "Returned: Leo's letter to Bob Tester"
+    for (let day = 0; day < 6; day += 1) {
+      await ann.request.post('/api/dev/clock', { data: { action: 'mail-day', userId: mantelId } })
+      await open(ann, `/mantels/${mantelId}`)
+      if (await ann.getByText(returned).count()) break
+    }
+    await expect(ann.getByText(returned)).toBeVisible()
+
+    await ann.getByRole('link', { name: 'Read the returned letter to Bob Tester' }).click()
+    await expect(ann.getByRole('heading', { name: returned })).toBeVisible()
+    await expect(ann.getByText('Returned to sender')).toBeVisible()
+    await expect(
+      ann.getByText("This letter could not be delivered, so it has come back to Leo's mantel."),
+    ).toBeVisible()
+    await expect(ann.getByText(FROM_LEO)).toBeVisible()
+    await expect(
+      ann.getByText("This letter was opened on your device with Leo's key."),
+    ).toBeVisible()
+    await expect(ann.getByRole('link', { name: 'Write back as Leo' })).toHaveCount(0)
+  } finally {
+    await ann.request.post('/api/dev/clock', { data: { action: 'reset' } })
+  }
+
+  await close()
+})
