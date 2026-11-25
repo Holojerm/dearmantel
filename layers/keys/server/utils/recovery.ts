@@ -7,7 +7,7 @@
 // the keepers' vote, so it does not take effect at once. Every keeper is told,
 // any of them can cancel it, and only after the wait does it stand.
 
-import { and, eq, isNull, sql } from 'drizzle-orm'
+import { and, eq, inArray, isNull, sql } from 'drizzle-orm'
 import type { BatchItem } from 'drizzle-orm/batch'
 import * as tables from '@nuxthub/db/schema'
 
@@ -286,4 +286,23 @@ export async function myRecoveries(db: KeysDb, userId: string, now: Date) {
     readyAt: row.readyAt.toISOString(),
     ready: row.readyAt <= now,
   }))
+}
+
+/**
+ * Which of these claims wait on a mantel nobody keeps now: its only keeper
+ * deleted their account. Nobody can cancel those, so the claimant is told so.
+ */
+export async function unkeptClaims(db: KeysDb, claimIds: string[]): Promise<Set<string>> {
+  if (claimIds.length === 0) return new Set()
+  const { mantelRecoveries, mantelKeepers } = tables
+  const rows = await db
+    .select({ id: mantelRecoveries.id })
+    .from(mantelRecoveries)
+    .where(
+      and(
+        inArray(mantelRecoveries.id, claimIds),
+        sql`not exists (select 1 from ${mantelKeepers} where ${mantelKeepers.mantelId} = ${mantelRecoveries.mantelId} and ${mantelKeepers.leftAt} is null)`,
+      ),
+    )
+  return new Set(rows.map((row) => row.id))
 }

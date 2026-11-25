@@ -9,15 +9,20 @@ import { postNow } from '#layers/post/server/utils/clock'
 import { offersFor } from '../../utils/custody'
 import { handoversFor } from '../../utils/handover'
 import { listMantels } from '../../utils/mantels'
-import { myRecoveries } from '../../utils/recovery'
+import { myRecoveries, unkeptClaims } from '../../utils/recovery'
 
 export default defineEventHandler(async (event) => {
   const { user } = await requireUserSession(event)
   const now = await postNow()
+  const recoveries = await myRecoveries(db, user.id, now)
+  const unkept = await unkeptClaims(
+    db,
+    recoveries.map((claim) => claim.id),
+  )
   return {
     mantels: await listMantels(db, user.id),
     offers: await offersFor(db, user.id, now),
-    recoveries: await myRecoveries(db, user.id, now),
+    recoveries: recoveries.map((claim) => ({ ...claim, unkept: unkept.has(claim.id) })),
     handovers: await handoversFor(db, user.id),
   }
 })
