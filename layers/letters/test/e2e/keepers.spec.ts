@@ -6,7 +6,7 @@ import { readFile } from 'node:fs/promises'
 
 import { expect, test, uniqueEmail } from '../../../../test/e2e/fixtures'
 
-import { device, finishSignUp, makePair, open } from './helpers'
+import { device, finishSignUp, makePair, open, reload } from './helpers'
 
 // A 1 × 1 PNG.
 const PNG = Buffer.from(
@@ -68,7 +68,7 @@ test('a kept mantel: opened, its code shown once, a second keeper seated', async
   const spoken = (await bob.getByTestId('my-fingerprint').innerText()).trim()
 
   // ── Ann sees the same groups, and her browser wraps the key to him ─────────
-  await ann.reload({ waitUntil: 'networkidle' })
+  await reload(ann)
   await expect(ann.getByTestId('their-fingerprint')).toHaveText(spoken)
   const granted = ann.waitForRequest(
     (request) =>
@@ -100,7 +100,7 @@ test('a kept mantel: opened, its code shown once, a second keeper seated', async
   await expect(bob.getByText("Close Leo's mantel", { exact: true })).toBeVisible()
   await expect(bob.getByTestId('mantel-closed')).toHaveCount(0)
 
-  await ann.reload({ waitUntil: 'networkidle' })
+  await reload(ann)
   await ann.getByRole('button', { name: "Agree: Close Leo's mantel" }).click()
   await expect(ann.getByTestId('mantel-closed')).toBeVisible()
   // Nobody joins or leaves it now, and the removal Bob proposed is gone.
@@ -151,7 +151,7 @@ test('a keeper asks someone to write to the mantel', async ({ browser, baseURL }
   await open(bob, '/mantels')
   await expect(bob.getByText('You keep no mantels.')).toBeVisible()
 
-  await ann.reload({ waitUntil: 'networkidle' })
+  await reload(ann)
   await expect(ann.getByText('Bob Tester', { exact: true })).toBeVisible()
 
   await close()
@@ -180,13 +180,13 @@ test('a wedding guest writes from the card, with no account', async ({ browser, 
   await ann.getByLabel('Saturday').uncheck()
   await ann.getByRole('button', { name: 'Save days and hour' }).click()
   await expect(ann.getByText(/A change to its days and hour starts on /)).toBeVisible()
-  await ann.reload({ waitUntil: 'networkidle' })
+  await reload(ann)
   await ann.getByRole('button', { name: 'Make the write link' }).click()
   const address = new URL((await ann.getByTestId('guest-link').innerText()).trim())
   expect(address.pathname).toMatch(/^\/w\/[A-Za-z0-9_-]{22}$/)
   expect(address.hash).toMatch(/^#[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{22}$/)
   // Every device that opens the mantel works out the same address.
-  await ann.reload({ waitUntil: 'networkidle' })
+  await reload(ann)
   await expect(ann.getByTestId('guest-link')).toHaveText(address.href)
 
   // ── A guest, signed out, on their own phone ────────────────────────────────
@@ -242,7 +242,7 @@ test('a wedding guest writes from the card, with no account', async ({ browser, 
   ).not.toHaveProperty('user')
 
   // ── The couple sees that a letter came through the link, and no more ───────
-  await ann.reload({ waitUntil: 'networkidle' })
+  await reload(ann)
   await expect(ann.getByText('1 of 300 letters received through this link.')).toBeVisible()
   await expect(ann.getByText('Nothing has arrived yet.')).toBeVisible()
 
@@ -337,7 +337,7 @@ test("a keeper leaves: the mantel's key is changed and the others keep reading",
     await open(who, '/mantels')
     await who.getByRole('button', { name: 'Accept' }).click()
     const spoken = (await who.getByTestId('my-fingerprint').innerText()).trim()
-    await ann.reload({ waitUntil: 'networkidle' })
+    await reload(ann)
     await expect(ann.getByTestId('their-fingerprint')).toHaveText(spoken)
     await ann.getByRole('button', { name: 'They match. Give them the key' }).click()
     await expect(ann.getByTestId('their-fingerprint')).toHaveCount(0)
@@ -358,7 +358,7 @@ test("a keeper leaves: the mantel's key is changed and the others keep reading",
   await expect(bob.getByText('Cal Tester')).toHaveCount(0)
 
   // ── Ann changes the key. Only wrapped keys leave her browser ───────────────
-  await ann.reload({ waitUntil: 'networkidle' })
+  await reload(ann)
   await expect(ann.getByRole('heading', { name: "Change this mantel's key" })).toBeVisible()
   const stored = ann.waitForRequest((request) => request.url().endsWith('/api/letters/kept/rekey'))
   await ann.getByRole('button', { name: 'Change the key' }).click()
@@ -384,12 +384,12 @@ test("a keeper leaves: the mantel's key is changed and the others keep reading",
   expect(secondCode).not.toBe(firstCode)
   // The old code is dead now, so the new one is not lost by leaving the page
   // before it has been kept: it is shown again until she says she has it.
-  await ann.reload({ waitUntil: 'networkidle' })
+  await reload(ann)
   await expect(ann.getByTestId('recovery-code')).toHaveText(secondCode)
   await ann.getByLabel('I have kept my recovery code somewhere safe').check()
   await ann.getByRole('button', { name: 'Continue' }).click()
   await expect(ann.getByTestId('recovery-code')).toHaveCount(0)
-  await ann.reload({ waitUntil: 'networkidle' })
+  await reload(ann)
   await expect(ann.getByTestId('recovery-code')).toHaveCount(0)
   await expect(ann.getByRole('heading', { name: "Change this mantel's key" })).toHaveCount(0)
   await expect(ann.getByText('This device cannot open this mantel')).toHaveCount(0)
@@ -403,7 +403,7 @@ test("a keeper leaves: the mantel's key is changed and the others keep reading",
   await expect(bob.getByText("This mantel's key was changed")).toBeVisible()
   await expect(bob.getByText('This device cannot open this mantel')).toHaveCount(0)
   await expect(bob.getByRole('heading', { name: "Change this mantel's key" })).toHaveCount(0)
-  await bob.reload({ waitUntil: 'networkidle' })
+  await reload(bob)
   await expect(bob.getByText("This mantel's key was changed")).toHaveCount(0)
   await expect(bob.getByText('This device cannot open this mantel')).toHaveCount(0)
 
