@@ -15,6 +15,12 @@ interface Recovery {
   readyAt: string
   ready: boolean
 }
+interface Handover {
+  mantelId: string
+  name: string
+  accepted: boolean
+  keyGiven: boolean
+}
 interface Offer {
   id: string
   mantelName: string
@@ -28,7 +34,9 @@ const { data, refresh } = await useFetch<{
   mantels: Kept[]
   offers: Offer[]
   recoveries: Recovery[]
+  handovers: Handover[]
 }>('/api/mantels')
+const handovers = computed(() => data.value?.handovers ?? [])
 const recoveries = computed(() => data.value?.recoveries ?? [])
 const day = (iso: string) =>
   new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })
@@ -94,6 +102,20 @@ useSeo({
       icon="i-lucide-circle-alert"
       :description="failure"
     />
+
+    <section
+      v-if="handovers.length"
+      aria-labelledby="handovers-heading"
+      class="flex flex-col gap-3"
+    >
+      <h2 id="handovers-heading" class="text-xl text-highlighted">Kept for you</h2>
+      <LettersHandoverTake
+        v-for="handover in handovers"
+        :key="handover.mantelId"
+        :handover="handover"
+        @done="refresh"
+      />
+    </section>
 
     <section v-if="offers.length" aria-labelledby="offers-heading" class="flex flex-col gap-3">
       <h2 id="offers-heading" class="text-xl text-highlighted">You have been asked</h2>

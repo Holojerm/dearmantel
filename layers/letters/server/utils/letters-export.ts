@@ -7,6 +7,8 @@ import { and, desc, eq, inArray } from 'drizzle-orm'
 import * as tables from '@nuxthub/db/schema'
 
 import type { LettersDb } from './people'
+import { isSealedOn } from './kept-mantel'
+import { readerToday } from './seal-gate'
 
 export interface ExportedLetter {
   id: string
@@ -56,7 +58,11 @@ const NOTE =
 
 const iso = (date: Date | null) => (date ? date.toISOString() : null)
 
-export async function exportLetters(db: LettersDb, userId: string): Promise<AccountExportLetters> {
+export async function exportLetters(
+  db: LettersDb,
+  userId: string,
+  now: Date,
+): Promise<AccountExportLetters> {
   const {
     people,
     invites,
@@ -138,6 +144,7 @@ export async function exportLetters(db: LettersDb, userId: string): Promise<Acco
       postmark: letters.postmarkDate,
       arrivedOn: deliveries.mailDate,
       openedAt: deliveries.openedAt,
+      opensOn: letters.opensOn,
     })
     .from(deliveries)
     .innerJoin(letters, eq(letters.id, deliveries.letterId))
@@ -145,6 +152,7 @@ export async function exportLetters(db: LettersDb, userId: string): Promise<Acco
     .where(and(eq(deliveries.recipientId, userId), eq(deliveries.state, 'delivered')))
     .orderBy(desc(deliveries.deliveredAt))
 
+  const today = await readerToday(db, userId, now)
   return {
     note: NOTE,
     name: person?.name ?? null,
@@ -165,8 +173,10 @@ export async function exportLetters(db: LettersDb, userId: string): Promise<Acco
       hasPhoto: Boolean(photoKey),
       sealedAt: iso(sealedAt),
     })),
-    received: received.map(({ photoKey, openedAt, kind, ...row }) => ({
+    received: received.map(({ photoKey, openedAt, kind, opensOn, ...row }) => ({
       ...row,
+      // Sealed until a day that has not come: its key is withheld here too.
+      wrappedKey: isSealedOn(opensOn, today) ? null : row.wrappedKey,
       kind: kind === 'return' ? 'return' : 'letter',
       hasPhoto: Boolean(photoKey),
       openedAt: iso(openedAt),

@@ -2,9 +2,11 @@
 
 import { db } from '@nuxthub/db'
 
+import { postNow } from '#layers/post/server/utils/clock'
+
 import { listMantel } from '../../utils/mantel'
 
 export default defineEventHandler(async (event) => {
   const { user } = await requireUserSession(event)
-  return { items: await listMantel(db, user.id) }
+  return { items: await listMantel(db, user.id, await postNow()) }
 })

@@ -1,0 +1,12 @@
+Letters have been kept for you
+
+For years, people who know you have written letters to a mantel kept for {{mantelName}} on {{appName}}. Its keepers set a day for it to become yours, and that day has come.
+
+Sign in with this address, or make an account with it. One of the keepers will then check a short code with you, by phone or in person, and hand you the key. Letters sealed until a later day stay sealed until then.
+
+Take your mantel: {{url}}
+
+—
+If you don't know why you got this, ignore it: nothing more will be sent.
+
+{{appUrl}}

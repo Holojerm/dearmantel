@@ -9,6 +9,7 @@ import { z } from 'zod'
 import { postNow } from '#layers/post/server/utils/clock'
 
 import { proposalsOf } from '../../utils/custody'
+import { handoverForKeeper } from '../../utils/handover'
 import { getMantel } from '../../utils/mantels'
 import { recoveriesOf } from '../../utils/recovery'
 import { takeRecoveryCodeNotice } from '../../utils/recovery-code'
@@ -22,8 +23,11 @@ export default defineEventHandler(async (event) => {
   if (!mantel) throw createError({ statusCode: 404, message: 'You do not keep that mantel.' })
 
   const { users, people } = tables
-  const proposals = await proposalsOf(db, user.id, id, await postNow())
+  const now = await postNow()
+  const proposals = await proposalsOf(db, user.id, id, now)
+  const childHandover = await handoverForKeeper(db, user.id, id, now)
   const ids = [
+    ...(childHandover?.childId ? [childHandover.childId] : []),
     ...mantel.keepers.map((keeper) => keeper.userId),
     ...proposals.map((proposal) => proposal.subjectId).filter((who): who is string => Boolean(who)),
   ]
@@ -43,6 +47,11 @@ export default defineEventHandler(async (event) => {
     keepers: mantel.keepers.map((keeper) => ({ ...keeper, name: nameOf(keeper.userId) })),
     proposals: proposals.map((proposal) => ({ ...proposal, name: nameOf(proposal.subjectId) })),
     recoveries: await recoveriesOf(db, user.id, id),
+    childHandover: childHandover && {
+      ...childHandover,
+      childName: nameOf(childHandover.childId),
+      namedBy: nameOf(childHandover.namedBy),
+    },
     // `recoveryProofHash` (from getMantel) lets this keeper's browser tell
     // whether a code it made is the mantel's code. It is a hash of a value
     // derived from the code, and a keeper holds the key itself.

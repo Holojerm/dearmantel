@@ -1,0 +1,9 @@
+{{mantelName}}'s handover day has come
+
+Today is the day you and the other keepers set for {{mantelName}} to take their mantel.
+
+If an address for {{mantelName}} was given, it has been invited. If not, give the address they will sign in with on the mantel's page. When they accept, one of you checks a short code with them and hands over the key.
+
+Open the mantel: {{url}}
+
+{{appUrl}}

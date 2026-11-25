@@ -297,8 +297,8 @@ describe('what arrives', () => {
   it("leaves the writer their own copy, and puts nothing on any person's mantel", async () => {
     await deliver()
     expect(await ownLetter(db, 'ann', SEALED)).toMatchObject({ wrappedKey: 'key-for-ann' })
-    expect(await listMantel(db, 'ann')).toEqual([])
-    expect(await listMantel(db, 'bob')).toEqual([])
+    expect(await listMantel(db, 'ann', FRIDAY)).toEqual([])
+    expect(await listMantel(db, 'bob', FRIDAY)).toEqual([])
     expect(await openLetter(db, 'bob', SEALED, FRIDAY)).toBeNull()
   })
 })

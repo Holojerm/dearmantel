@@ -261,9 +261,9 @@ describe('a letter to the family', () => {
       .set({ state: 'delivered', deliveredAt: FRIDAY, mailDate: '2026-11-20' })
       .where(eq(deliveries.recipientId, 'bob'))
 
-    expect(await listMantel(db, 'bob')).toMatchObject([{ name: 'Ann Lee' }])
+    expect(await listMantel(db, 'bob', FRIDAY)).toMatchObject([{ name: 'Ann Lee' }])
     expect(await openLetter(db, 'bob', LETTER, FRIDAY)).toMatchObject({ wrappedKey: 'k-bob' })
-    expect(await listMantel(db, 'cal')).toEqual([])
+    expect(await listMantel(db, 'cal', FRIDAY)).toEqual([])
     expect(await openLetter(db, 'cal', LETTER, FRIDAY)).toBeNull()
     const calCopy = (await db.select().from(deliveries)).find((copy) => copy.recipientId === 'cal')
     expect(calCopy?.openedAt).toBeNull()

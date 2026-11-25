@@ -255,7 +255,7 @@ describe('a child’s news', () => {
     })
 
     await deliver()
-    const arrived = (await listMantel(db, 'eve')).toSorted((a, b) =>
+    const arrived = (await listMantel(db, 'eve', FRIDAY)).toSorted((a, b) =>
       a.letterId.localeCompare(b.letterId),
     )
     expect(arrived).toMatchObject([

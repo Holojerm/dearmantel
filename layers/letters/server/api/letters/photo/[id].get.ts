@@ -24,9 +24,10 @@ export default defineEventHandler(async (event) => {
   let sealed: ArrayBuffer | null = null
   if (id.success && query.success) {
     const mantel = query.data.mantel
-    if (!mantel) sealed = await readPhoto(db, photoStore, user.id, id.data)
+    const now = await postNow()
+    if (!mantel) sealed = await readPhoto(db, photoStore, user.id, id.data, now)
     else {
-      sealed = await readKeptPhoto(db, photoStore, user.id, mantel, id.data, await postNow())
+      sealed = await readKeptPhoto(db, photoStore, user.id, mantel, id.data, now)
       // Never readPhoto as the mantel: that would pass over the seal on what it received.
       if (!sealed && (await writingAs(db, user.id, mantel)) === mantel) {
         sealed = await ownPhoto(db, photoStore, mantel, id.data)
