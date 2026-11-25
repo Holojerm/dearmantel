@@ -502,3 +502,71 @@
     }
   }
 }
+
+/* DESIGN.md › Motion › A diagram keeps pace. `play-scene` gives a diagram its
+ * own stretch of scrolling, and what is drawn inside moves as that stretch
+ * crosses the window, between --from and --to of the way: scrolling is the
+ * days going by. Each drawing's resting style is the finished diagram and the
+ * keyframes only say where it starts, so with motion turned down, or in a
+ * browser without scroll timelines, the diagram is simply complete. */
+@keyframes along-travel {
+  from {
+    transform: translate(var(--dx, 0), var(--dy, 0)) rotate(var(--turn, 0deg));
+  }
+}
+@keyframes along-appear {
+  from {
+    opacity: 0;
+    scale: 0.7;
+  }
+}
+@keyframes along-ink {
+  from {
+    background-color: transparent;
+    border-color: var(--ui-border);
+  }
+}
+@keyframes along-leave {
+  from {
+    opacity: 1;
+  }
+}
+@utility play-scene {
+  view-timeline: --scene block;
+}
+@utility play-travel {
+  @media (prefers-reduced-motion: no-preference) {
+    @supports (animation-timeline: view()) {
+      animation: along-travel linear both;
+      animation-timeline: --scene;
+      animation-range: cover var(--from, 20%) cover var(--to, 50%);
+    }
+  }
+}
+@utility play-appear {
+  @media (prefers-reduced-motion: no-preference) {
+    @supports (animation-timeline: view()) {
+      animation: along-appear linear both;
+      animation-timeline: --scene;
+      animation-range: cover var(--from, 20%) cover var(--to, 50%);
+    }
+  }
+}
+@utility play-ink {
+  @media (prefers-reduced-motion: no-preference) {
+    @supports (animation-timeline: view()) {
+      animation: along-ink linear both;
+      animation-timeline: --scene;
+      animation-range: cover var(--from, 20%) cover var(--to, 50%);
+    }
+  }
+}
+@utility play-leave {
+  @media (prefers-reduced-motion: no-preference) {
+    @supports (animation-timeline: view()) {
+      animation: along-leave linear both;
+      animation-timeline: --scene;
+      animation-range: cover var(--from, 20%) cover var(--to, 50%);
+    }
+  }
+}
