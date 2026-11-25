@@ -6,7 +6,7 @@ import type { Page } from '@playwright/test'
 
 import { expect, test } from '../../../../test/e2e/fixtures'
 
-import { makePair, open } from './helpers'
+import { makePair, open, reload } from './helpers'
 
 const CODE = /^([0-9A-Z]{4}-){7}[0-9A-Z]{4}$/
 
@@ -36,7 +36,7 @@ test('a new recovery code: the old one stops working, the new one opens the mant
   await open(bob, '/mantels')
   await bob.getByRole('button', { name: 'Accept' }).click()
   const spoken = (await bob.getByTestId('my-fingerprint').innerText()).trim()
-  await ann.reload({ waitUntil: 'networkidle' })
+  await reload(ann)
   await expect(ann.getByTestId('their-fingerprint')).toHaveText(spoken)
   await ann.getByRole('button', { name: 'They match. Give them the key' }).click()
   await expect(ann.getByTestId('their-fingerprint')).toHaveCount(0)
@@ -64,12 +64,12 @@ test('a new recovery code: the old one stops working, the new one opens the mant
   expect(newCode).not.toBe(oldCode)
   expect(JSON.stringify(sent)).not.toContain(newCode.replaceAll('-', ''))
   // Shown again until she says she has it, since the old one is already dead.
-  await ann.reload({ waitUntil: 'networkidle' })
+  await reload(ann)
   await expect(ann.getByTestId('recovery-code')).toHaveText(newCode)
   await ann.getByLabel('I have kept my recovery code somewhere safe').check()
   await ann.getByRole('button', { name: 'Continue' }).click()
   await expect(ann.getByTestId('recovery-code')).toHaveCount(0)
-  await ann.reload({ waitUntil: 'networkidle' })
+  await reload(ann)
   await expect(ann.getByTestId('recovery-code')).toHaveCount(0)
   await expect(ann.getByRole('heading', { name: 'The recovery code' })).toBeVisible()
   await expect(ann.getByText("This mantel's recovery code was replaced")).toHaveCount(0)
@@ -77,7 +77,7 @@ test('a new recovery code: the old one stops working, the new one opens the mant
   // ── Bob is told once ───────────────────────────────────────────────────────
   await open(bob, mantelPath)
   await expect(bob.getByText("This mantel's recovery code was replaced")).toBeVisible()
-  await bob.reload({ waitUntil: 'networkidle' })
+  await reload(bob)
   await expect(bob.getByText("This mantel's recovery code was replaced")).toHaveCount(0)
 
   // ── The code printed before opens nothing; the new one opens the mantel ────

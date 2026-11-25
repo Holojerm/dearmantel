@@ -7,11 +7,9 @@ import type { CDPSession, Page } from '@playwright/test'
 
 import { expect, test, uniqueEmail } from '../../../../test/e2e/fixtures'
 
-const PASSWORD = 'added-later-password-0001'
+import { open } from './navigation'
 
-async function open(page: Page, path: string): Promise<void> {
-  await page.goto(path, { waitUntil: 'networkidle' })
-}
+const PASSWORD = 'added-later-password-0001'
 
 async function mailedLink(page: Page, name: string): Promise<string> {
   const href = await page.getByRole('link', { name }).getAttribute('href')

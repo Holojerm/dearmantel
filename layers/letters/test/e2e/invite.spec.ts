@@ -4,7 +4,7 @@
 
 import { expect, test, uniqueEmail } from '../../../../test/e2e/fixtures'
 
-import { device, finishSignUp, open } from './helpers'
+import { device, finishSignUp, open, reload } from './helpers'
 
 test('an invitation: sent, opened signed out, accepted after sign-up', async ({
   page,
@@ -66,7 +66,7 @@ test('an invitation: sent, opened signed out, accepted after sign-up', async ({
   await expect(other.getByText('Ann Tester')).toBeVisible()
 
   // ── Both now see each other; the invitation is spent ───────────────────────
-  await page.reload({ waitUntil: 'networkidle' })
+  await reload(page)
   await expect(page.getByText('Bob Tester')).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Invitations waiting' })).toHaveCount(0)
 
