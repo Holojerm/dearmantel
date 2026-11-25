@@ -70,6 +70,16 @@ export const SAMPLES: Record<string, EmailSample> = {
     mantelName: 'Leo',
     url: `${brand.appUrl}/mantels/4b0f6c1e-0d3a-4c1f-9e57-1f2f6b6f0a11`,
   },
+  'mantel-closed': {
+    ...brand,
+    mantelName: 'Leo',
+    url: `${brand.appUrl}/people`,
+  },
+  'mantel-closed-keepers': {
+    ...brand,
+    mantelName: 'Leo',
+    url: `${brand.appUrl}/mantels/4b0f6c1e-0d3a-4c1f-9e57-1f2f6b6f0a11`,
+  },
   'magic-link': {
     ...brand,
     url: `${brand.appUrl}/auth/confirm?token=2f9c1d`,

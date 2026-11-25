@@ -2,12 +2,18 @@
 // The letters side of a mantel someone keeps: where its post arrives, how
 // letters to it open, writing to it and, for a child's mantel, from it, and
 // what has arrived. A letter sealed until a day shows that day and nothing else.
+// Once its keepers close it, only what has arrived is shown.
 import { ALL_MAIL_DAYS } from '#layers/post/shared/utils/mail-days'
 
 import type { KeptItem, KeptPost } from '../../../shared/utils/kept'
 import type { OpeningsView } from '../../../shared/utils/openings'
 
-const props = defineProps<{ mantelId: string; name: string; kind: 'child' | 'anniversary' }>()
+const props = defineProps<{
+  mantelId: string
+  name: string
+  kind: 'child' | 'anniversary'
+  closed?: boolean
+}>()
 
 interface City {
   id: number
@@ -180,7 +186,7 @@ function describe(letter: KeptItem): string {
       :description="failure"
     />
 
-    <template v-if="loaded && !post">
+    <template v-if="loaded && !post && !closed">
       <p class="text-muted">
         Before anyone can write to {{ name }}, choose the city this mantel's post arrives in.
         Letters travel to it as they would to a person there.
@@ -204,16 +210,18 @@ function describe(letter: KeptItem): string {
       </UFormField>
     </template>
 
-    <template v-else-if="post">
-      <LettersKeptPost :mantel-id="mantelId" :post="post" @changed="load" />
+    <template v-else-if="post || closed">
+      <LettersKeptPost v-if="post && !closed" :mantel-id="mantelId" :post="post" @changed="load" />
       <LettersMantelOpenings
-        v-if="openings"
+        v-if="openings && !closed"
         :mantel-id="mantelId"
         :name="name"
         :openings="openings"
         @changed="load"
       />
-      <UButton class="self-start" :loading="busy" @click="write">Write to {{ name }}</UButton>
+      <UButton v-if="!closed" class="self-start" :loading="busy" @click="write">
+        Write to {{ name }}
+      </UButton>
 
       <p v-if="letters.length === 0" class="text-muted">Nothing has arrived yet.</p>
       <ul v-else class="flex flex-col divide-y divide-default">
@@ -242,66 +250,74 @@ function describe(letter: KeptItem): string {
 
       <LettersKeptArchive v-if="canCopy" :mantel-id="mantelId" :name="name" :wrote="sent > 0" />
 
-      <LettersMantelWrites v-if="kind === 'child'" :mantel-id="mantelId" :name="name" />
+      <LettersMantelWrites v-if="kind === 'child' && !closed" :mantel-id="mantelId" :name="name" />
 
-      <h3 class="mt-4 text-lg text-highlighted">Who writes to {{ name }}</h3>
-      <p class="text-sm text-muted">
-        Its keepers can write from here. Ask grandparents, godparents or friends to write too: each
-        gets their own invitation, and none of them can read what the others wrote. If you stop
-        someone, their letters still on the way go back to them, and what has arrived stays.
-      </p>
-      <ul v-if="writers.length || invited.length" class="flex flex-col divide-y divide-default">
-        <li
-          v-for="writer in writers"
-          :key="writer.userId"
-          class="flex items-center justify-between gap-4 py-2"
-        >
-          <span class="text-highlighted">{{ writer.name }}</span>
-          <UButton
-            v-if="!writer.keeper"
-            size="sm"
-            variant="ghost"
-            color="neutral"
-            :disabled="busy"
-            :aria-label="`Stop ${writer.name} writing to ${name}`"
-            @click="writerAction({ action: 'stop', writerId: writer.userId })"
+      <template v-if="!closed">
+        <h3 class="mt-4 text-lg text-highlighted">Who writes to {{ name }}</h3>
+        <p class="text-sm text-muted">
+          Its keepers can write from here. Ask grandparents, godparents or friends to write too:
+          each gets their own invitation, and none of them can read what the others wrote. If you
+          stop someone, their letters still on the way go back to them, and what has arrived stays.
+        </p>
+        <ul v-if="writers.length || invited.length" class="flex flex-col divide-y divide-default">
+          <li
+            v-for="writer in writers"
+            :key="writer.userId"
+            class="flex items-center justify-between gap-4 py-2"
           >
-            Stop
-          </UButton>
-          <span v-else class="text-sm text-muted">Keeper</span>
-        </li>
-        <li
-          v-for="waiting in invited"
-          :key="waiting.id"
-          class="flex items-center justify-between gap-4 py-2"
-        >
-          <span class="text-muted">{{ waiting.email }} · invited</span>
-          <UButton
-            size="sm"
-            variant="ghost"
-            color="neutral"
-            :disabled="busy"
-            :aria-label="`Withdraw the invitation to ${waiting.email}`"
-            @click="writerAction({ action: 'withdraw', inviteId: waiting.id })"
+            <span class="text-highlighted">{{ writer.name }}</span>
+            <UButton
+              v-if="!writer.keeper"
+              size="sm"
+              variant="ghost"
+              color="neutral"
+              :disabled="busy"
+              :aria-label="`Stop ${writer.name} writing to ${name}`"
+              @click="writerAction({ action: 'stop', writerId: writer.userId })"
+            >
+              Stop
+            </UButton>
+            <span v-else class="text-sm text-muted">Keeper</span>
+          </li>
+          <li
+            v-for="waiting in invited"
+            :key="waiting.id"
+            class="flex items-center justify-between gap-4 py-2"
           >
-            Withdraw
+            <span class="text-muted">{{ waiting.email }} · invited</span>
+            <UButton
+              size="sm"
+              variant="ghost"
+              color="neutral"
+              :disabled="busy"
+              :aria-label="`Withdraw the invitation to ${waiting.email}`"
+              @click="writerAction({ action: 'withdraw', inviteId: waiting.id })"
+            >
+              Withdraw
+            </UButton>
+          </li>
+        </ul>
+        <form class="flex flex-col gap-3" @submit.prevent="invite">
+          <UFormField label="Invite a writer by email" name="writer-email">
+            <UInput
+              v-model="writerEmail"
+              type="email"
+              size="lg"
+              class="w-full"
+              autocomplete="off"
+            />
+          </UFormField>
+          <UButton type="submit" class="self-start" :loading="busy" :disabled="!writerEmail.trim()">
+            Send invitation
           </UButton>
-        </li>
-      </ul>
-      <form class="flex flex-col gap-3" @submit.prevent="invite">
-        <UFormField label="Invite a writer by email" name="writer-email">
-          <UInput v-model="writerEmail" type="email" size="lg" class="w-full" autocomplete="off" />
-        </UFormField>
-        <UButton type="submit" class="self-start" :loading="busy" :disabled="!writerEmail.trim()">
-          Send invitation
-        </UButton>
-      </form>
-      <p v-if="inviteLink" class="text-sm text-muted">
-        Sent. You can also pass this link on yourself:
-        <span class="break-all text-default" data-testid="writer-invite-link">{{
-          inviteLink
-        }}</span>
-      </p>
+        </form>
+        <p v-if="inviteLink" class="text-sm text-muted">
+          Sent. You can also pass this link on yourself:
+          <span class="break-all text-default" data-testid="writer-invite-link">{{
+            inviteLink
+          }}</span>
+        </p>
+      </template>
     </template>
   </section>
 </template>

@@ -35,7 +35,7 @@ async function handoverRow(db: KeysDb, mantelId: string) {
 async function openChildMantel(db: KeysDb, mantelId: string) {
   const { mantels } = tables
   const [mantel] = await db.select().from(mantels).where(eq(mantels.id, mantelId)).limit(1)
-  return mantel?.kind === 'child' && !mantel.closedAt ? mantel : null
+  return mantel?.kind === 'child' && !mantel.handedOverAt ? mantel : null
 }
 
 /** Whether the child holds a copy of the mantel's key as it is now. */
@@ -147,7 +147,7 @@ export async function handoversFor(db: KeysDb, userId: string) {
     .innerJoin(mantels, eq(mantels.id, mantelHandovers.mantelId))
     .where(
       and(
-        isNull(mantels.closedAt),
+        isNull(mantels.handedOverAt),
         isNull(mantelHandovers.completedAt),
         or(
           eq(mantelHandovers.childId, userId),
@@ -279,7 +279,7 @@ export async function handoverToTake(db: KeysDb, childId: string, mantelId: stri
 export const handoverReady = (mantelId: string, childId: string) => sql`EXISTS (
   SELECT 1 FROM mantel_handovers h JOIN mantels m ON m.id = h.mantel_id
   WHERE h.mantel_id = ${mantelId} AND h.child_id = ${childId} AND h.wrapped IS NOT NULL
-    AND h.key_version = m.key_version AND h.completed_at IS NULL AND m.closed_at IS NULL
+    AND h.key_version = m.key_version AND h.completed_at IS NULL AND m.handed_over_at IS NULL
     AND m.kind = 'child'
 )`
 
@@ -328,12 +328,13 @@ export function handoverCloseStatements(
       .set({
         handedOverAt: now,
         handedOverTo: childId,
-        closedAt: now,
+        // A mantel its keepers closed before its day keeps that day.
+        closedAt: sql`coalesce(${mantels.closedAt}, ${Math.floor(now.getTime() / 1000)})`,
         recoveryProofHash: null,
         rekeyDueAt: null,
         updatedAt: now,
       })
-      .where(and(eq(mantels.id, mantelId), isNull(mantels.closedAt))),
+      .where(and(eq(mantels.id, mantelId), isNull(mantels.handedOverAt))),
   ]
 }
 

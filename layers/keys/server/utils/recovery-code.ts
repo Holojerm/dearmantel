@@ -47,7 +47,7 @@ export async function replaceMantelRecoveryCode(
   const keepers = await keepersOf(db, mantelId)
   if (!keepers.some((keeper) => keeper.userId === keeperId)) return 'not-keeper'
   const [mantel] = await db.select().from(mantels).where(eq(mantels.id, mantelId)).limit(1)
-  if (!mantel || mantel.closedAt) return 'not-keeper'
+  if (!mantel || mantel.handedOverAt) return 'not-keeper'
   // Someone who left may hold the key: a new code alone would leave it with
   // them. The re-key makes a new code as well.
   if (mantel.rekeyDueAt) return 'rekey-due'
@@ -78,7 +78,7 @@ export async function replaceMantelRecoveryCode(
       // Nobody left while the browser worked, and this keeper still keeps it.
       batchGuard(
         db,
-        sql`EXISTS (SELECT 1 FROM mantels WHERE id = ${mantelId} AND rekey_due_at IS NULL AND closed_at IS NULL)
+        sql`EXISTS (SELECT 1 FROM mantels WHERE id = ${mantelId} AND rekey_due_at IS NULL AND handed_over_at IS NULL)
           AND EXISTS (SELECT 1 FROM mantel_keepers WHERE mantel_id = ${mantelId} AND user_id = ${keeperId} AND left_at IS NULL)`,
       ),
       db.delete(mantelKeyWraps).where(and(ofMantel, eq(mantelKeyWraps.kind, 'recovery'))),

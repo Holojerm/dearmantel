@@ -32,11 +32,15 @@ export const handoverIsDue = (handoverOn: string | null, today: string) =>
 async function childMantel(db: KeysDb, mantelId: string) {
   const { mantels } = tables
   const [mantel] = await db
-    .select({ kind: mantels.kind, handoverOn: mantels.handoverOn, closedAt: mantels.closedAt })
+    .select({
+      kind: mantels.kind,
+      handoverOn: mantels.handoverOn,
+      handedOverAt: mantels.handedOverAt,
+    })
     .from(mantels)
     .where(eq(mantels.id, mantelId))
     .limit(1)
-  return mantel?.kind === 'child' && !mantel.closedAt ? mantel : null
+  return mantel?.kind === 'child' && !mantel.handedOverAt ? mantel : null
 }
 
 export type HandoverDateResult =
@@ -104,7 +108,7 @@ export async function applyHandoverDateIfCarried(
     db
       .update(mantels)
       .set({ handoverOn: proposal.handoverOn, updatedAt: now })
-      .where(and(eq(mantels.id, proposal.mantelId), isNull(mantels.closedAt))),
+      .where(and(eq(mantels.id, proposal.mantelId), isNull(mantels.handedOverAt))),
     db
       .update(mantelProposals)
       .set({ outcome: 'done', settledAt: now, updatedAt: now })

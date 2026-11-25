@@ -27,7 +27,7 @@ async function mantelFor(db: KeysDb, proof: string) {
     .from(mantels)
     .where(eq(mantels.recoveryProofHash, await sha256Hex(proof)))
     .limit(1)
-  return mantel && !mantel.closedAt ? mantel : null
+  return mantel && !mantel.handedOverAt ? mantel : null
 }
 
 async function hasKeys(db: KeysDb, userId: string): Promise<boolean> {
@@ -198,7 +198,7 @@ export async function finishRecovery(
   if (!claim || claim.cancelledAt || claim.completedAt) return 'gone'
   if (claim.readyAt > now) return 'not-ready'
   const [mantel] = await db.select().from(mantels).where(eq(mantels.id, claim.mantelId)).limit(1)
-  if (!mantel || mantel.closedAt) return 'gone'
+  if (!mantel || mantel.handedOverAt) return 'gone'
 
   const role = FOUNDER_ROLE[mantel.kind as MantelKind]
   const statements: BatchItem<'sqlite'>[] = [
@@ -277,7 +277,7 @@ export async function myRecoveries(db: KeysDb, userId: string, now: Date) {
         eq(mantelRecoveries.claimantId, userId),
         isNull(mantelRecoveries.cancelledAt),
         isNull(mantelRecoveries.completedAt),
-        isNull(mantels.closedAt),
+        isNull(mantels.handedOverAt),
       ),
     )
   return rows.map((row) => ({

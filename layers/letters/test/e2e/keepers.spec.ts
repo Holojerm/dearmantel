@@ -1,6 +1,6 @@
 // A mantel for a child, in Chromium: its keys are made in the browser, its
-// recovery code is shown once, and a second keeper is seated only after the
-// two people have the same fingerprint on their screens.
+// recovery code is shown once, a second keeper is seated only after the two
+// people have the same fingerprint on their screens, and closing it takes both.
 
 import { readFile } from 'node:fs/promises'
 
@@ -93,6 +93,21 @@ test('a kept mantel: opened, its code shown once, a second keeper seated', async
     .click()
   await expect(bob.getByText('1 of 2 keepers agree.')).toBeVisible()
   await expect(bob.getByText('Ann Tester', { exact: true })).toBeVisible()
+
+  // ── Closing it takes both of them too ──────────────────────────────────────
+  await bob.getByRole('button', { name: "Propose closing Leo's mantel" }).click()
+  await bob.getByRole('button', { name: 'Propose closing it' }).click()
+  await expect(bob.getByText("Close Leo's mantel", { exact: true })).toBeVisible()
+  await expect(bob.getByTestId('mantel-closed')).toHaveCount(0)
+
+  await ann.reload({ waitUntil: 'networkidle' })
+  await ann.getByRole('button', { name: "Agree: Close Leo's mantel" }).click()
+  await expect(ann.getByTestId('mantel-closed')).toBeVisible()
+  // Nobody joins or leaves it now, and the removal Bob proposed is gone.
+  await expect(ann.getByLabel('Their email')).toHaveCount(0)
+  await expect(ann.getByText('Ann Tester stops keeping this mantel')).toHaveCount(0)
+  await expect(ann.getByText('Bob Tester')).toBeVisible()
+  await expect(ann.getByRole('button', { name: 'Write to Leo' })).toHaveCount(0)
 
   await close()
 })

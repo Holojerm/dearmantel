@@ -1,7 +1,8 @@
 // Reading custody proposals and their votes. A proposal is carried when more
 // than half of the keepers have voted for it, counted against the keepers at
 // the moment it takes effect. Shared by every kind of proposal: who keeps a
-// mantel (custody.ts) and when a child's mantel is handed over (handover.ts).
+// mantel (custody.ts), when a child's mantel is handed over (handover-date.ts)
+// and closing it (close-mantel.ts).
 
 import { and, eq, isNull } from 'drizzle-orm'
 import * as tables from '@nuxthub/db/schema'

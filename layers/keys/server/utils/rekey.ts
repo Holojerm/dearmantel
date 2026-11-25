@@ -123,7 +123,7 @@ export async function rekeyPlan(db: KeysDb, keeperId: string, mantelId: string) 
   const keepers = await keepersOf(db, mantelId)
   if (!keepers.some((keeper) => keeper.userId === keeperId)) return null
   const [mantel] = await db.select().from(mantels).where(eq(mantels.id, mantelId)).limit(1)
-  if (!mantel || mantel.closedAt || !mantel.rekeyDueAt) return null
+  if (!mantel || mantel.handedOverAt || !mantel.rekeyDueAt) return null
   return {
     keyVersion: mantel.keyVersion,
     publicKey: mantel.publicKey,
@@ -153,7 +153,7 @@ export async function rekeyStatements(
   const keepers = await keepersOf(db, mantelId)
   if (!keepers.some((keeper) => keeper.userId === keeperId)) return { status: 'not-keeper' }
   const [mantel] = await db.select().from(mantels).where(eq(mantels.id, mantelId)).limit(1)
-  if (!mantel || mantel.closedAt || !mantel.rekeyDueAt) return { status: 'not-due' }
+  if (!mantel || mantel.handedOverAt || !mantel.rekeyDueAt) return { status: 'not-due' }
   // The same key again would mark the mantel as re-keyed and change nothing.
   if (mantel.keyVersion !== input.keyVersion || mantel.publicKey === input.publicKey) {
     return { status: 'changed' }
