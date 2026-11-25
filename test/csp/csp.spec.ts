@@ -27,6 +27,7 @@
 
 import { expect, test } from '@playwright/test'
 
+import { noncedPolicy } from '../../layers/keys/server/utils/script-nonce'
 import { contentSecurityPolicy } from '../../shared/security-headers'
 import { recordConsole } from '../lib/console'
 import { hasLayer, hasPage, SIGN_IN_PATH } from '../lib/layers'
@@ -199,7 +200,11 @@ test.describe('the policy still permits what the vendors need', () => {
 // directives, no 'unsafe-eval', the script-src host list) are in
 // test/security-headers.test.ts. This pins the one thing they cannot see: that
 // the server really sends that policy.
+// A rendered page carries the same policy with a nonce for script-src's
+// 'unsafe-inline' (layers/keys/server/utils/script-nonce.ts).
 test('the policy on the wire is the one the config defines', async ({ page }) => {
   const response = await page.goto('/')
-  expect(response!.headers()['content-security-policy']).toBe(contentSecurityPolicy(true))
+  const sent = response!.headers()['content-security-policy'] ?? ''
+  const nonce = /'nonce-([\w-]+)'/.exec(sent)?.[1] ?? ''
+  expect(sent).toBe(noncedPolicy(contentSecurityPolicy(true), nonce))
 })

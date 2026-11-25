@@ -29,7 +29,8 @@ const failure = ref<string | null>(null)
 // False when this device cannot open the mantel, and so cannot work out the address.
 const opens = ref(true)
 
-const mantelKey = () => mantelKeys.open({ id: props.mantelId, wrappedKey: props.wrappedKey })
+const mantelKey = () =>
+  mantelKeys.open({ id: props.mantelId, wrappedKey: props.wrappedKey, publicKey: props.publicKey })
 
 const inDays = (days: number) => new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10)
 

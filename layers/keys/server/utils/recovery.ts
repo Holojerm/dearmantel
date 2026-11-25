@@ -54,7 +54,13 @@ export async function findByRecoveryProof(db: KeysDb, proof: string) {
     .where(and(eq(mantelKeyWraps.mantelId, mantel.id), eq(mantelKeyWraps.kind, 'recovery')))
     .limit(1)
   if (!wrap) return null
-  return { mantelId: mantel.id, name: mantel.name, recoveryWrap: wrap.wrapped }
+  // The public key, so the browser can tell the copy holds the mantel's own key.
+  return {
+    mantelId: mantel.id,
+    name: mantel.name,
+    publicKey: mantel.publicKey,
+    recoveryWrap: wrap.wrapped,
+  }
 }
 
 // Every copy held for one person: the ordinary one, and after a re-key the

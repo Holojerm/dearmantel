@@ -100,6 +100,7 @@ describe('using the code', () => {
     expect(await findByRecoveryProof(db, PROOF)).toEqual({
       mantelId: MANTEL,
       name: 'Leo',
+      publicKey: expect.any(String),
       recoveryWrap: RECOVERY_WRAP,
     })
     expect(await findByRecoveryProof(db, 'x'.repeat(43))).toBeNull()

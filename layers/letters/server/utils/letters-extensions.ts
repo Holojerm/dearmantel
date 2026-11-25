@@ -7,6 +7,7 @@ import * as tables from '@nuxthub/db/schema'
 import { registerAccountContributor, registerPurgeContributor } from '#server/utils/extensions'
 import { registerPublicApiRoutes } from '#server/utils/public-routes'
 
+import { onKeeperRemoved } from '#layers/keys/server/utils/keeper-removal'
 import { postNow } from '#layers/post/server/utils/clock'
 
 import { returnInTransitTo } from './closing'
@@ -67,6 +68,31 @@ export function registerLettersExtensions(photos: PhotoStore = photoStore): void
   registerPurgeContributor({
     key: 'invites',
     run: (db, options) => purgeExpiredInvites(db, new Date(options.now ?? Date.now())),
+  })
+
+  // A keeper the others vote off stops writing to the mantel: the
+  // correspondence they had as a keeper closes. What they already posted
+  // still arrives. To write on, a keeper invites them as anyone else.
+  onKeeperRemoved({
+    key: 'letters',
+    statements: (db, { mantelId, userId, now }) => [
+      db
+        .update(correspondences)
+        .set({ closedAt: now, closedBy: userId, updatedAt: now })
+        .where(
+          and(
+            eq(correspondences.mantelId, mantelId),
+            isNull(correspondences.closedAt),
+            inArray(
+              correspondences.id,
+              db
+                .select({ id: members.correspondenceId })
+                .from(members)
+                .where(and(eq(members.userId, userId), isNull(members.leftAt))),
+            ),
+          ),
+        ),
+    ],
   })
 
   // Deleting an account follows the paper rule. What the person received,

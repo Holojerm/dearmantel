@@ -15,10 +15,10 @@ import {
   recoveryProofHash,
   openHandoverChain,
   unwrapMantelKey,
-  unwrapMantelKeyWithCode,
   wrapMantelKeyForKeeper,
   wrapMantelKeyUnderCode,
 } from '../utils/mantel-crypto'
+import { isMantelKey, openKeeperCopy, openRecoveryCopy } from '../utils/mantel-key-check'
 
 export interface KeptMantel {
   id: string
@@ -27,8 +27,8 @@ export interface KeptMantel {
   keyVersion?: number
   /** After a re-key, until this keeper's browser has opened the new key. */
   handover?: { previous: string; wrapped: string } | null
-  /** The mantel's public key as the server gives it: a handed-over key must be its pair. */
-  publicKey?: string
+  /** The mantel's public key as the server gives it: any copy opened must be its pair. */
+  publicKey: string
 }
 
 export function useMantelKeys() {
@@ -73,8 +73,7 @@ export function useMantelKeys() {
     if (!mantelKey) return null
     // What was handed over must be the key letters are now sealed to. A copy
     // of anything else is not stored, and not passed on to a new keeper.
-    const pair = await publicKeyOf(await importPrivateKey(mantelKey)).catch(() => null)
-    if (!mantel.publicKey || pair !== mantel.publicKey) return null
+    if (!(await isMantelKey(mantelKey, mantel.publicKey))) return null
     // If storing the copy fails the key is still good for this visit, and the
     // two copies it came from are still there for the next.
     await $fetch('/api/mantels/rekey/settle', {
@@ -88,12 +87,16 @@ export function useMantelKeys() {
     return mantelKey
   }
 
-  /** This keeper's copy of the mantel's private key, opened. Null if this device cannot. */
+  /**
+   * This keeper's copy of the mantel's private key, opened. Null if this
+   * device cannot, or if the copy holds any key but the mantel's own.
+   */
   async function open(mantel: KeptMantel): Promise<Uint8Array<ArrayBuffer> | null> {
     const privateKey = await keys.privateKey()
     if (!privateKey) return null
     if (!mantel.wrappedKey) return takeHandover(privateKey, mantel)
-    return unwrapMantelKey(privateKey, mantel.wrappedKey, { mantelId: mantel.id, keeperId: me() })
+    const context = { mantelId: mantel.id, keeperId: me() }
+    return openKeeperCopy(privateKey, mantel.wrappedKey, context, mantel.publicKey)
   }
 
   return {
@@ -135,10 +138,21 @@ export function useMantelKeys() {
       const proof = await recoveryProof(secret)
       const found = await $fetch<
         | { status: 'unknown' }
-        | { status: 'found'; mantelId: string; name: string; recoveryWrap: string }
+        | {
+            status: 'found'
+            mantelId: string
+            name: string
+            publicKey: string
+            recoveryWrap: string
+          }
       >('/api/mantels/recover/find', { method: 'POST', body: { proof } })
       if (found.status !== 'found') return { status: 'unknown' as const }
-      const mantelKey = await unwrapMantelKeyWithCode(secret, found.mantelId, found.recoveryWrap)
+      const mantelKey = await openRecoveryCopy(
+        secret,
+        found.mantelId,
+        found.recoveryWrap,
+        found.publicKey,
+      )
       if (!mantelKey) return { status: 'unknown' as const }
       const claimed = await $fetch<{ status: 'restored' } | { status: 'waiting'; readyAt: string }>(
         '/api/mantels/recover/claim',
