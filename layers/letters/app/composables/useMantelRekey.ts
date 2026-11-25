@@ -1,5 +1,5 @@
 // Changing a mantel's key, in a keeper's browser, after another keeper has
-// left: a new key pair and recovery code, the new key for each keeper who
+// left or once the keepers agreed it got out: a new key pair and recovery code, the new key for each keeper who
 // remains, and every letter key the mantel holds wrapped again to the new
 // key. The server is sent only wrapped keys and stores them all at once.
 

@@ -185,7 +185,11 @@ already got out; the page says so.
 Re-keying a mantel (`rekey.ts`, and `layers/letters/server/utils/kept-rekey.ts` for the letter
 keys): a keeper who leaves, by a vote or by deleting their account, may still hold the
 mantel's key, so `mantels.rekeyDueAt` is set and the keepers who remain are asked to change it
-(`LettersMantelRekey` on the mantel's page). One keeper's browser makes a new key pair and
+(`LettersMantelRekey` on the mantel's page). The keepers can also ask for one when nobody has
+left, if they think the key got out: a `rekey` proposal (`rekey-vote.ts`, `MantelChangeKey`)
+carried like any custody change, which only sets `rekeyDueAt` (a mantel's only keeper carries it
+alone); every re-key settles any `rekey` proposal still open. A keeper leaving still asks with no
+vote (decision D5). One keeper's browser makes a new key pair and
 recovery code and wraps every `letter_keys` row held for the mantel again to the new key
 (`useMantelRekey`, `rewrapLetterKeys`). `rekeyMantel` stores all of it in one batch: the new
 public key and `keyVersion`, the keeper's copy, the recovery copy and proof, the letter keys,

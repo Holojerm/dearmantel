@@ -1,6 +1,7 @@
 <script setup lang="ts">
-// Shown to a mantel's keepers after one of them has left. The person who left
-// may still hold the mantel's key, so a keeper who remains changes it here.
+// Shown to a mantel's keepers after one of them has left, or once they have
+// agreed that its key got out (`MantelChangeKey`). Whoever left, or whoever
+// has the key, may still hold it, so a keeper changes it here.
 // Everything that follows from that is said before the button, because the
 // old recovery code and any printed write link stop working for good.
 import type { KeptMantel } from '#layers/keys/app/composables/useMantelKeys'
@@ -11,6 +12,7 @@ const props = defineProps<{
     name: string
     publicKey: string
     rekeyDue: boolean
+    rekeyAsked: boolean
   }
   otherKeepers: number
 }>()
@@ -76,8 +78,18 @@ async function change() {
 
     <UCard v-else>
       <div class="flex flex-col gap-4">
-        <h2 id="rekey-heading" class="text-xl text-highlighted">Change this mantel's key</h2>
-        <p class="text-muted">
+        <h2 id="rekey-heading" class="text-xl text-highlighted" tabindex="-1">
+          Change this mantel's key
+        </h2>
+        <p v-if="mantel.rekeyAsked" class="text-muted">
+          {{
+            otherKeepers > 0
+              ? `${mantel.name}'s keepers agreed to change its key, in case someone who should not have it has a copy.`
+              : `You asked to change ${mantel.name}'s key, in case someone who should not have it has a copy.`
+          }}
+          Changing it means that copy opens nothing kept here.
+        </p>
+        <p v-else class="text-muted">
           Someone who kept {{ mantel.name }}'s mantel no longer does. They were given its key, and
           may still have a copy. Changing the key means that copy opens nothing kept here.
         </p>
