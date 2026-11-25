@@ -162,6 +162,18 @@ and a person's own mantel withholds it until then (`seal-gate.ts`: `listMantel`,
 `readPhoto`, the export's keys). `mantelKeyIs` refuses a closed mantel, so nothing more is filed
 under its id.
 
+Closing a kept mantel (`layers/keys/server/utils/close-mantel.ts`, and
+`layers/letters/server/utils/mantel-closed.ts` through the `onMantelClosed` seam) is a `close`
+proposal carried like any custody change; a mantel's only keeper closes it alone. It ends
+writing, not keeping: one batch sets `mantels.closedAt`, withdraws the proposals about who keeps
+it, closes every correspondence with the mantel and its news (`closedBy` is the mantel's id),
+expires its invitations and revokes its write link; then letters in transit to it go back to
+their senders and each writer and each other keeper is emailed (`mantel-closed`,
+`mantel-closed-keepers`). Keepers, their copies of the key, the recovery code and every letter
+stay. So `closedAt` gates writing and who keeps it, and `handedOverAt` gates what guards the
+letters: a closed mantel still recovers (`recovery.ts`), still asks its last keeper for the code
+(`sole-keeper.ts`), still re-keys, and a closed child's mantel is still handed over on its day.
+
 A new recovery code without a new key (`recovery-code.ts`, `MantelRecoveryCode` on the
 mantel's page): for a printed code that was lost or seen. There is one code a mantel, so the
 'recovery' copy and `recoveryProofHash` are replaced in one guarded batch, open claims on the

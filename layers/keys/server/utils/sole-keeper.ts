@@ -44,7 +44,11 @@ export async function soleKeeperOf(db: KeysDb, userId: string): Promise<SoleKept
     .from(mantelKeepers)
     .innerJoin(mantels, eq(mantels.id, mantelKeepers.mantelId))
     .where(
-      and(eq(mantelKeepers.userId, userId), isNull(mantelKeepers.leftAt), isNull(mantels.closedAt)),
+      and(
+        eq(mantelKeepers.userId, userId),
+        isNull(mantelKeepers.leftAt),
+        isNull(mantels.handedOverAt),
+      ),
     )
   const alone: SoleKeptMantel[] = []
   for (const mantel of mine) {

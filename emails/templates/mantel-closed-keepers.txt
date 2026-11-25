@@ -1,0 +1,9 @@
+{{mantelName}}'s mantel is closed
+
+More than half of the keepers of {{mantelName}}'s mantel agreed to close it, and it is now closed. Nobody can write to it, its keepers included. The people who wrote to it have been told, and letters still on their way to it go back to whoever sent them.
+
+You still keep it. Its letters, its key and its recovery code stay as they are: you can read the letters and keep a copy of them.
+
+Open the mantel: {{url}}
+
+{{appUrl}}

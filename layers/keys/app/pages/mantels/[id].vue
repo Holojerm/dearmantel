@@ -1,5 +1,6 @@
 <script setup lang="ts">
-// One kept mantel: who keeps it, and the proposals that would change that.
+// One kept mantel: who keeps it, and the proposals that would change that,
+// closing it among them.
 // Seating a new keeper happens here, in a keeper's browser, after the two
 // people have compared the new keeper's key by voice.
 import { KEEPER_ROLES, type KeeperRole } from '../../../shared/utils/mantel-format'
@@ -13,7 +14,7 @@ interface Keeper {
 }
 interface Proposal {
   id: string
-  kind: 'add_keeper' | 'remove_keeper' | 'handover_date'
+  kind: 'add_keeper' | 'remove_keeper' | 'handover_date' | 'close'
   handoverOn: string | null
   email: string | null
   subjectId: string | null
@@ -33,6 +34,8 @@ interface MantelView {
   publicKey: string
   keyVersion: number
   rekeyDue: boolean
+  /** Its keepers closed it: nobody writes to it, and its letters stay. */
+  closedAt: string | null
   recoveryProofHash: string | null
   /** Another keeper replaced the recovery code since this keeper last looked. */
   recoveryCodeReplacedAt: string | null
@@ -166,6 +169,8 @@ const grant = (id: string) =>
     }
   })
 
+const closing = computed(() => mantel.value?.proposals.some((p) => p.kind === 'close') ?? false)
+
 const subject = (proposal: Proposal) => proposal.name ?? proposal.email ?? 'someone'
 const onDay = (on: string | null) =>
   on
@@ -177,6 +182,7 @@ const onDay = (on: string | null) =>
       })
     : ''
 function describe(proposal: Proposal): string {
+  if (proposal.kind === 'close') return `Close ${mantel.value?.name ?? 'this'}'s mantel`
   if (proposal.kind === 'handover_date')
     return `Hand the mantel over on ${onDay(proposal.handoverOn)}`
   return proposal.kind === 'add_keeper'
@@ -201,6 +207,13 @@ useSeo({ title: 'A mantel you keep', description: 'Who keeps this mantel.', noin
     />
 
     <template v-if="mantel">
+      <p v-if="mantel.closedAt" class="text-muted" data-testid="mantel-closed">
+        This mantel closed on {{ day(mantel.closedAt) }}. Nobody can write to it now, its keepers
+        included. Its letters stay here, to read and keep a copy of.
+        <template v-if="mantel.kind === 'child'">
+          It is still handed over to {{ mantel.name }} on its handover day.
+        </template>
+      </p>
       <UAlert
         v-if="canOpen === false"
         color="warning"
@@ -211,7 +224,7 @@ useSeo({ title: 'A mantel you keep', description: 'Who keeps this mantel.', noin
         :actions="[{ label: 'Use the recovery code', to: '/mantels/recover' }]"
       />
       <UAlert
-        v-else-if="mantel.keepers.length === 1"
+        v-else-if="mantel.keepers.length === 1 && !mantel.closedAt"
         color="info"
         variant="subtle"
         icon="i-lucide-user-plus"
@@ -253,9 +266,14 @@ useSeo({ title: 'A mantel you keep', description: 'Who keeps this mantel.', noin
         :actions="[{ label: 'Cancel it', onClick: () => cancelRecovery(claim.id) }]"
       />
 
-      <LettersKeptMantel :mantel-id="mantel.id" :name="mantel.name" :kind="mantel.kind" />
+      <LettersKeptMantel
+        :mantel-id="mantel.id"
+        :name="mantel.name"
+        :kind="mantel.kind"
+        :closed="Boolean(mantel.closedAt)"
+      />
       <LettersMantelNews
-        v-if="mantel.kind === 'child'"
+        v-if="mantel.kind === 'child' && !mantel.closedAt"
         :mantel-id="mantel.id"
         :name="mantel.name"
       />
@@ -266,7 +284,7 @@ useSeo({ title: 'A mantel you keep', description: 'Who keeps this mantel.', noin
         @done="load"
       />
       <LettersGuestLink
-        v-if="mantel.kind === 'anniversary'"
+        v-if="mantel.kind === 'anniversary' && !mantel.closedAt"
         :mantel-id="mantel.id"
         :public-key="mantel.publicKey"
         :wrapped-key="mantel.wrappedKey"
@@ -287,7 +305,7 @@ useSeo({ title: 'A mantel you keep', description: 'Who keeps this mantel.', noin
               <p class="text-sm text-muted">{{ ROLE[keeper.role] }}</p>
             </div>
             <UButton
-              v-if="mantel.keepers.length > 1"
+              v-if="mantel.keepers.length > 1 && !mantel.closedAt"
               size="sm"
               variant="ghost"
               color="neutral"
@@ -299,7 +317,7 @@ useSeo({ title: 'A mantel you keep', description: 'Who keeps this mantel.', noin
             </UButton>
           </li>
         </ul>
-        <p class="text-sm text-muted">
+        <p v-if="!mantel.closedAt" class="text-sm text-muted">
           Changes to who keeps a mantel need more than half of its keepers to agree. With two
           keepers, that is both.
         </p>
@@ -347,6 +365,7 @@ useSeo({ title: 'A mantel you keep', description: 'Who keeps this mantel.', noin
                 v-if="!proposal.voted"
                 size="sm"
                 :disabled="busy"
+                :aria-label="`Agree: ${describe(proposal)}`"
                 @click="act(proposal.id, 'vote')"
               >
                 Agree
@@ -366,7 +385,7 @@ useSeo({ title: 'A mantel you keep', description: 'Who keeps this mantel.', noin
         </UCard>
       </section>
 
-      <section aria-labelledby="add-heading" class="flex flex-col gap-3">
+      <section v-if="!mantel.closedAt" aria-labelledby="add-heading" class="flex flex-col gap-3">
         <h2 id="add-heading" class="text-xl text-highlighted">Ask someone to keep it with you</h2>
         <UCard>
           <form class="flex flex-col gap-4" @submit.prevent="propose">
@@ -386,6 +405,13 @@ useSeo({ title: 'A mantel you keep', description: 'Who keeps this mantel.', noin
           </form>
         </UCard>
       </section>
+
+      <MantelClose
+        v-if="!mantel.closedAt && !closing"
+        :mantel="mantel"
+        :keepers="mantel.keepers.length"
+        @done="load"
+      />
     </template>
   </div>
 </template>

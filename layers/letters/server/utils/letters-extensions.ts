@@ -12,6 +12,7 @@ import { postNow } from '#layers/post/server/utils/clock'
 
 import { returnInTransitTo } from './closing'
 import { exportLetters, type AccountExportLetters } from './letters-export'
+import { registerMantelClosed } from './mantel-closed'
 import type { LettersDb } from './people'
 import { photoStore } from './photo-store'
 import { removeDraftPhotos, type PhotoStore } from './photos'
@@ -69,6 +70,9 @@ export function registerLettersExtensions(photos: PhotoStore = photoStore): void
     key: 'invites',
     run: (db, options) => purgeExpiredInvites(db, new Date(options.now ?? Date.now())),
   })
+
+  // The keepers close the mantel: writing to it ends (mantel-closed.ts).
+  registerMantelClosed()
 
   // A keeper the others vote off stops writing to the mantel: the
   // correspondence they had as a keeper closes. What they already posted

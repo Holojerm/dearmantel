@@ -8,6 +8,7 @@ interface Kept {
   kind: 'child' | 'anniversary'
   name: string
   role: string
+  closedAt: string | null
 }
 interface Recovery {
   id: string
@@ -186,7 +187,9 @@ useSeo({
         <li v-for="mantel in kept" :key="mantel.id" class="flex items-center justify-between py-3">
           <div>
             <p class="text-highlighted">{{ mantel.name }}</p>
-            <p class="text-sm text-muted">{{ KIND[mantel.kind] }}</p>
+            <p class="text-sm text-muted">
+              {{ KIND[mantel.kind] }}{{ mantel.closedAt ? ' · Closed' : '' }}
+            </p>
           </div>
           <UButton
             size="sm"
