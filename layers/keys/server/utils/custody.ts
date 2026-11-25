@@ -16,6 +16,7 @@ import { carries, PROPOSAL_TTL_DAYS, type KeeperRole } from '../../shared/utils/
 import { batchGuard, isGuardFailure, mantelKeyVersionIs } from './batch-guard'
 import { applyCloseIfCarried } from './close-mantel'
 import { applyHandoverDateIfCarried } from './handover-date'
+import { applyRekeyIfCarried } from './rekey-vote'
 import { keeperRemovalStatements } from './keeper-removal'
 import type { KeysDb } from './keys'
 import { keepersOf } from './mantels'
@@ -166,6 +167,7 @@ export async function voteForProposal(
   await applyRemovalIfCarried(db, proposalId, now)
   await applyHandoverDateIfCarried(db, proposalId, now)
   await applyCloseIfCarried(db, proposalId, keeperId, now)
+  await applyRekeyIfCarried(db, proposalId, now)
   return 'voted'
 }
 
@@ -363,7 +365,7 @@ export async function proposalsOf(db: KeysDb, keeperId: string, mantelId: string
     const counted = votes.filter((vote) => keeperIds.includes(vote.userId))
     proposals.push({
       id: proposal.id,
-      kind: proposal.kind as 'add_keeper' | 'remove_keeper' | 'handover_date' | 'close',
+      kind: proposal.kind as 'add_keeper' | 'remove_keeper' | 'handover_date' | 'close' | 'rekey',
       handoverOn: proposal.handoverOn,
       // A keeper typed this address, so keepers may see it.
       email: proposal.subjectEmail,
