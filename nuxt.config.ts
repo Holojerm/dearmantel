@@ -21,13 +21,15 @@ import type { PublicPage } from './shared/utils/site'
 //
 //   04:00 UTC  — retention sweep, server/tasks/purge-expired-tokens.ts, which also
 //                prunes the ops_events spool (7 days); then the IndexNow ping,
-//                server/tasks/seo/indexnow.ts. The template's lifecycle email
-//                is left out on purpose: it nudges people who have not
-//                "finished setting up", and this product sends no nudges.
+//                server/tasks/seo/indexnow.ts; then child's mantels whose
+//                handover day has come, layers/keys/server/tasks/mantel-handover.ts.
+//                The template's lifecycle email is left out on purpose: it
+//                nudges people who have not "finished setting up", and this
+//                product sends no nudges.
 //   every 15 m — mail release, layers/post/server/tasks/release-mail.ts: each
 //                mailbox takes delivery at its own local hour.
 const SCHEDULED_TASKS: Record<string, string[]> = {
-  '0 4 * * *': ['purge-expired-tokens', 'seo:indexnow'],
+  '0 4 * * *': ['purge-expired-tokens', 'seo:indexnow', 'mantel-handover'],
   '*/15 * * * *': ['release-mail'],
 }
 

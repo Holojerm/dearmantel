@@ -4,6 +4,8 @@
 // day it is delivered, never before. DESIGN.md › Component behavior › The objects.
 import type { MantelItem } from '../../shared/utils/mantel'
 
+const NuxtLink = resolveComponent('NuxtLink')
+
 definePageMeta({ middleware: ['auth', 'keys'] })
 
 interface Kept {
@@ -15,13 +17,22 @@ const KIND = { child: "A child's mantel", anniversary: 'Anniversary letters' } a
 
 const [{ data }, { data: keeping }] = await Promise.all([
   useFetch<{ items: MantelItem[] }>('/api/letters/mantel'),
-  useFetch<{ mantels: Kept[]; offers: unknown[] }>('/api/mantels'),
+  useFetch<{ mantels: Kept[]; offers: unknown[]; handovers: unknown[] }>('/api/mantels'),
 ])
 const items = computed(() => data.value?.items ?? [])
 const waiting = computed(() => items.value.filter((item) => !item.opened))
 const opened = computed(() => items.value.filter((item) => item.opened))
 const kept = computed(() => keeping.value?.mantels ?? [])
 const asked = computed(() => (keeping.value?.offers ?? []).length > 0)
+// A child's mantel waiting to be handed over to this person.
+const keptForMe = computed(() => (keeping.value?.handovers ?? []).length > 0)
+const yearDay = (on: string) =>
+  new Date(`${on}T12:00:00Z`).toLocaleDateString(undefined, {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  })
 
 function title(item: MantelItem): string {
   if (item.news) {
@@ -64,9 +75,11 @@ useSeo({
               class="play-sway"
               :style="{ '--pace': `${6.4 + (index % 4) * 0.7}s` }"
             >
-              <!-- The envelope. Its flap is the only "new" marker in the product. -->
-              <NuxtLink
-                :to="`/letter/${item.letterId}`"
+              <!-- The envelope. Its flap is the only "new" marker in the product.
+                   One sealed until a day is not a link before that day. -->
+              <component
+                :is="item.sealedUntil ? 'div' : NuxtLink"
+                :to="item.sealedUntil ? undefined : `/letter/${item.letterId}`"
                 class="group relative flex aspect-4/3 flex-col justify-end gap-1 rounded-t-sm border border-b-0 border-(--line) bg-elevated p-3 transition-[translate] duration-200 ease-(--ease-spring) hover:-translate-y-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
               >
                 <svg
@@ -88,7 +101,10 @@ useSeo({
                   title(item)
                 }}</span>
                 <LetterPostmark v-if="item.postmark" :date="item.postmark" />
-              </NuxtLink>
+                <span v-if="item.sealedUntil" class="text-sm text-muted">
+                  Sealed. Opens {{ yearDay(item.sealedUntil) }}.
+                </span>
+              </component>
             </li>
           </ul>
           <div v-else class="flex min-w-0 flex-1 justify-center">
@@ -126,6 +142,11 @@ useSeo({
         </li>
       </ul>
     </section>
+
+    <p v-if="keptForMe" class="font-serif text-lg text-toned">
+      A mantel has been kept for you, and it is yours to take.
+      <ULink to="/mantels" class="underline">Take it</ULink>.
+    </p>
 
     <section v-if="kept.length || asked" aria-labelledby="kept-heading" class="flex flex-col gap-2">
       <h2 id="kept-heading" class="font-sans text-sm tracking-normal text-muted">

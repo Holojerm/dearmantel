@@ -105,7 +105,7 @@ beforeEach(async () => {
 
 describe('the letters section', () => {
   it('names the person and who they write with', async () => {
-    const data = await exportLetters(db, 'ann')
+    const data = await exportLetters(db, 'ann', FRIDAY)
 
     expect(data.name).toBe('Ann Lee')
     expect(data.correspondences).toEqual([
@@ -114,7 +114,7 @@ describe('the letters section', () => {
   })
 
   it('holds what they wrote, drafts included, encrypted with their own key', async () => {
-    const { written } = await exportLetters(db, 'ann')
+    const { written } = await exportLetters(db, 'ann', FRIDAY)
 
     expect(written.map((letter) => letter.id).toSorted()).toEqual([FROM_ANN, DRAFT].toSorted())
     for (const letter of written) {
@@ -125,7 +125,7 @@ describe('the letters section', () => {
   })
 
   it('says nothing about what became of a letter they sent', async () => {
-    const data = await exportLetters(db, 'ann')
+    const data = await exportLetters(db, 'ann', FRIDAY)
     const sent = data.written.find((letter) => letter.id === FROM_ANN)!
 
     expect(Object.keys(sent).toSorted()).toEqual(
@@ -144,7 +144,7 @@ describe('the letters section', () => {
   })
 
   it('holds only what has arrived, not what is on its way', async () => {
-    const { received } = await exportLetters(db, 'ann')
+    const { received } = await exportLetters(db, 'ann', FRIDAY)
 
     expect(received).toEqual([
       {
@@ -160,11 +160,11 @@ describe('the letters section', () => {
         openedAt: null,
       },
     ])
-    expect(JSON.stringify(await exportLetters(db, 'ann'))).not.toContain(SECOND_FROM_BOB)
+    expect(JSON.stringify(await exportLetters(db, 'ann', FRIDAY))).not.toContain(SECOND_FROM_BOB)
   })
 
   it("shows the recipient their own opening, and nobody else's letters", async () => {
-    const bob = await exportLetters(db, 'bob')
+    const bob = await exportLetters(db, 'bob', FRIDAY)
 
     expect(bob.received).toHaveLength(1)
     expect(bob.received[0]).toMatchObject({ id: FROM_ANN, openedAt: FRIDAY.toISOString() })

@@ -113,7 +113,7 @@ export function registerLettersExtensions(photos: PhotoStore = photoStore): void
       // Drafts go in the deletion itself; their photo files are not rows.
       await removeDraftPhotos(db, photos, userId)
     },
-    exportSection: exportLetters,
+    exportSection: async (db, userId) => exportLetters(db, userId, await postNow()),
     deletionStatements: (db, userId) => {
       const now = new Date()
       const myDrafts = db

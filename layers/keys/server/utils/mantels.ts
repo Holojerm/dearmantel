@@ -7,10 +7,10 @@
 import { and, eq, isNull } from 'drizzle-orm'
 import * as tables from '@nuxthub/db/schema'
 
-import { FOUNDER_ROLE, type NewMantel } from '../../shared/utils/mantel-format'
+import { FOUNDER_ROLE, isHandoverDay, type NewMantel } from '../../shared/utils/mantel-format'
 import type { KeysDb } from './keys'
 
-export type CreateMantelResult = 'created' | 'exists' | 'no-keys'
+export type CreateMantelResult = 'created' | 'exists' | 'no-keys' | 'bad-day'
 
 /**
  * Opens a mantel with its first keeper. The key pair was made in that
@@ -24,6 +24,10 @@ export async function createMantel(
   now: Date,
 ): Promise<CreateMantelResult> {
   const { mantels, mantelKeepers, mantelKeyWraps, userKeys } = tables
+  // The mantel has no post of its own yet, so its first day is read in UTC.
+  if (input.handoverOn && !isHandoverDay(input.handoverOn, now.toISOString().slice(0, 10))) {
+    return 'bad-day'
+  }
   const [account] = await db
     .select({ userId: userKeys.userId })
     .from(userKeys)
@@ -44,6 +48,7 @@ export async function createMantel(
       name: input.name,
       publicKey: input.publicKey,
       recoveryProofHash: input.recoveryProofHash,
+      handoverOn: input.kind === 'child' ? (input.handoverOn ?? null) : null,
       createdBy: userId,
       createdAt: now,
       updatedAt: now,
@@ -127,6 +132,8 @@ export async function getMantel(db: KeysDb, userId: string, mantelId: string) {
     keyVersion: mantel.keyVersion,
     /** A keeper has left and may still hold the key: it should be changed. */
     rekeyDue: Boolean(mantel.rekeyDueAt),
+    /** A child's mantel: the day it becomes the child's own. */
+    handoverOn: mantel.handoverOn,
     recoveryProofHash: mantel.recoveryProofHash,
     closedAt: mantel.closedAt,
     keepers,

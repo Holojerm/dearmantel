@@ -2,6 +2,7 @@
 // Opening a mantel for a child or a couple. Its keys are made on this device,
 // and its recovery code is shown once, before anything else can happen.
 import {
+  isHandoverDay,
   MANTEL_KINDS,
   mantelNameSchema,
   type MantelKind,
@@ -16,17 +17,31 @@ const pending = ref(false)
 const failure = ref<string | null>(null)
 const made = ref<{ id: string; code: string } | null>(null)
 
+// A child's mantel becomes theirs on a day set now. Eighteen years from today
+// is only where the field starts.
+const today = new Date().toISOString().slice(0, 10)
+const tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10)
+const handoverOn = ref(`${Number(today.slice(0, 4)) + 18}${today.slice(4)}`)
+
 const KINDS = MANTEL_KINDS.map((value) => ({
   value,
   label: value === 'child' ? "A child's mantel" : 'Anniversary letters for a couple',
 }))
-const valid = computed(() => mantelNameSchema.safeParse(name.value).success)
+const valid = computed(
+  () =>
+    mantelNameSchema.safeParse(name.value).success &&
+    (kind.value !== 'child' || isHandoverDay(handoverOn.value, today)),
+)
 
 async function create() {
   pending.value = true
   failure.value = null
   try {
-    made.value = await mantelKeys.create({ kind: kind.value, name: name.value.trim() })
+    made.value = await mantelKeys.create({
+      kind: kind.value,
+      name: name.value.trim(),
+      ...(kind.value === 'child' ? { handoverOn: handoverOn.value } : {}),
+    })
   } catch (error) {
     failure.value =
       (error as { data?: { message?: string } }).data?.message ??
@@ -89,6 +104,21 @@ useSeo({
             "
           >
             <UInput v-model="name" maxlength="60" size="lg" class="w-full" autocomplete="off" />
+          </UFormField>
+          <UFormField
+            v-if="kind === 'child'"
+            label="When does it become theirs?"
+            name="handover-day"
+            help="Such as their 18th birthday. On that day they are invited to take the mantel with an account of their own, and no keeper can hold it back. Moving the day later needs more than half of its keepers."
+          >
+            <UInput
+              v-model="handoverOn"
+              type="date"
+              size="lg"
+              :min="tomorrow"
+              class="w-full"
+              autocomplete="off"
+            />
           </UFormField>
           <UButton type="submit" class="self-start" :loading="pending" :disabled="!valid">
             Open the mantel

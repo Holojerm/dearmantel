@@ -1,4 +1,4 @@
-// Both tests here move the dev clock, which every browser shares, so they
+// Every test here moves the dev clock, which every browser shares, so they
 // live in one file and run one after the other.
 //
 // A letter, end to end in Chromium: encrypted in the browser, sealed with
@@ -7,9 +7,9 @@
 
 import { readFile } from 'node:fs/promises'
 
-import { expect, test } from '../../../../test/e2e/fixtures'
+import { expect, test, uniqueEmail } from '../../../../test/e2e/fixtures'
 
-import { makePair, open } from './helpers'
+import { device, finishSignUp, makePair, open } from './helpers'
 
 // The suite runs tests in parallel even inside a file. These two must not.
 test.describe.configure({ mode: 'serial' })
@@ -404,6 +404,100 @@ test('news of a child: asked for, sent, read, and not answered', async ({ browse
   await expect(
     ann.getByText('Nobody yet, apart from the people who keep this mantel.'),
   ).toBeVisible()
+
+  await close()
+})
+
+// Handing Leo's mantel over: the day is set when it is opened, the address a
+// keeper gives is invited once the day has come, Leo accepts and reads the
+// key's fingerprint to his keeper, and his browser makes the letters his. His
+// keeper then keeps nothing.
+const FOR_LEO = 'Dear Leo, this one is yours now.'
+
+test('a child’s mantel is handed over, and its keeper keeps nothing', async ({
+  browser,
+  baseURL,
+}) => {
+  test.setTimeout(240_000)
+  const { ann, close } = await makePair(browser, baseURL!)
+
+  await open(ann, '/mantels/new')
+  await ann.getByLabel('Whose mantel is it?').fill('Leo')
+  const tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10)
+  await ann.getByLabel('When does it become theirs?').fill(tomorrow)
+  await ann.getByRole('button', { name: 'Open the mantel' }).click()
+  await ann.getByLabel('I have kept my recovery code somewhere safe').check()
+  await ann.getByRole('button', { name: 'Continue' }).click()
+  await ann.waitForURL(/\/mantels\/[0-9a-f-]{36}$/)
+  const mantelId = new URL(ann.url()).pathname.split('/').pop()!
+  await ann.getByLabel("The mantel's city").fill('Chicago')
+  await ann
+    .getByRole('button', { name: /^Chicago/ })
+    .first()
+    .click()
+  await expect(ann.getByText(/Its post arrives in Chicago/)).toBeVisible()
+  await expect(ann.getByText(/Leo's mantel becomes theirs on/)).toBeVisible()
+
+  // ── Ann writes to him ─────────────────────────────────────────────────────
+  await ann.getByRole('button', { name: 'Write to Leo' }).click()
+  await ann.waitForURL('**/write?to=*')
+  await ann.getByLabel('Your letter').fill(FOR_LEO)
+  await expect(ann.getByText('Saved, encrypted on this device.')).toBeVisible()
+  await ann.getByRole('button', { name: 'Seal the letter' }).click()
+  await ann.getByRole('button', { name: 'Seal and post' }).click()
+  await ann.waitForURL('**/desk')
+
+  const leo = await device(browser, baseURL!)
+  const leoEmail = uniqueEmail('handover')
+  try {
+    // ── The letter arrives, and the handover day comes ───────────────────────
+    for (let day = 0; day < 6; day += 1) {
+      await ann.request.post('/api/dev/clock', { data: { action: 'mail-day', userId: mantelId } })
+      await open(ann, `/mantels/${mantelId}`)
+      const arrived = (await ann.getByText(/^From Ann Tester$/).count()) > 0
+      if (arrived && (await ann.getByText('The handover day has come.').count())) break
+    }
+    await expect(ann.getByText(/The handover day has come/)).toBeVisible()
+
+    // ── Ann gives his address; it is invited at once ─────────────────────────
+    await ann.getByLabel("Leo's email").fill(leoEmail)
+    await ann.getByRole('button', { name: 'Give the address' }).click()
+    await expect(ann.getByTestId('handover-address')).toContainText('was invited')
+
+    // ── Leo makes an account with it and accepts ─────────────────────────────
+    await open(leo, '/auth/sign-up')
+    await finishSignUp(leo, leoEmail, 'Leo Tester')
+    await leo.waitForURL('**/people', { timeout: 15_000 })
+    await open(leo, '/mantels')
+    await expect(leo.getByRole('heading', { name: 'Kept for you' })).toBeVisible()
+    await leo.getByRole('button', { name: 'Accept the mantel' }).click()
+    const his = (await leo.getByTestId('my-fingerprint').innerText()).trim()
+
+    // ── Ann checks the fingerprint with him and hands over the key ───────────
+    await open(ann, `/mantels/${mantelId}`)
+    await expect(ann.getByTestId('child-fingerprint')).toHaveText(his)
+    await ann.getByRole('button', { name: 'They match. Hand over the key' }).click()
+    await expect(ann.getByText(/holds the key/)).toBeVisible()
+
+    // ── Leo's browser makes the letters his ──────────────────────────────────
+    await open(leo, '/mantels')
+    await leo.getByRole('button', { name: 'Make the letters mine' }).click()
+    await expect(leo.getByText('The letters are yours.', { exact: false })).toBeVisible({
+      timeout: 30_000,
+    })
+    await leo.getByRole('link', { name: 'Go to your mantel' }).click()
+    await leo.getByRole('link', { name: /From Ann Tester/ }).click()
+    await expect(leo.getByText(FOR_LEO)).toBeVisible()
+
+    // ── Ann keeps nothing: no mantel, no key, no letters ─────────────────────
+    await open(ann, `/mantels/${mantelId}`)
+    await expect(ann.getByText('You do not keep that mantel.')).toBeVisible()
+    const listed = await ann.request.post('/api/letters/kept/list', { data: { mantelId } })
+    expect(listed.ok()).toBe(false)
+  } finally {
+    await ann.request.post('/api/dev/clock', { data: { action: 'reset' } })
+    await leo.context().close()
+  }
 
   await close()
 })

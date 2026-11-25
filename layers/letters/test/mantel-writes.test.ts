@@ -242,7 +242,9 @@ describe('the mantel writing back', () => {
     await draft(LEO, letterId(1), eveToLeo, { authorKey: 'leo-key' })
     await sealLetter(db, LEO, letterId(1), 'k-eve', MONDAY)
     await deliverAll()
-    expect(await listMantel(db, 'eve')).toMatchObject([{ letterId: letterId(1), name: 'Leo' }])
+    expect(await listMantel(db, 'eve', FRIDAY)).toMatchObject([
+      { letterId: letterId(1), name: 'Leo' },
+    ])
     expect(await openLetter(db, 'eve', letterId(1), FRIDAY)).toMatchObject({
       name: 'Leo',
       canReply: true,
@@ -289,7 +291,7 @@ describe('the mantel writing back', () => {
       answerIn: null,
     })
     expect(await listKeptMantel(db, 'ann', LEO, FRIDAY)).toMatchObject([{ opened: true }])
-    expect(await listMantel(db, 'eve')).toEqual([])
+    expect(await listMantel(db, 'eve', FRIDAY)).toEqual([])
   })
 
   it('does not write in a keeper’s place where it is not a member', async () => {

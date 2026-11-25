@@ -9,6 +9,7 @@ import * as tables from '@nuxthub/db/schema'
 import { photoStorageKey } from '../../shared/utils/letter-photo'
 import { hasReceived } from './mantel'
 import type { LettersDb } from './people'
+import { sealedFor } from './seal-gate'
 
 /** Object storage, as much of it as a photo needs. */
 export interface PhotoStore {
@@ -83,13 +84,15 @@ export async function detachPhoto(
 
 /**
  * The sealed file, for the letter's author or for someone it has arrived for.
- * Null for anyone else, and for the recipient until delivery.
+ * Null for anyone else, for the recipient until delivery, and until its
+ * opening day for a letter sealed until one.
  */
 export async function readPhoto(
   db: LettersDb,
   store: PhotoStore,
   userId: string,
   letterId: string,
+  now: Date,
 ): Promise<ArrayBuffer | null> {
   const { letters } = tables
   const [letter] = await db
@@ -98,7 +101,10 @@ export async function readPhoto(
     .where(eq(letters.id, letterId))
     .limit(1)
   if (!letter?.photoKey) return null
-  if (letter.authorId !== userId && !(await hasReceived(db, userId, letterId))) return null
+  if (letter.authorId !== userId) {
+    if (!(await hasReceived(db, userId, letterId))) return null
+    if (await sealedFor(db, userId, letterId, now)) return null
+  }
   return store.get(letter.photoKey)
 }
 
