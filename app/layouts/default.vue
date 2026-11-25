@@ -86,6 +86,7 @@ const signingIn = computed(() => route.path.startsWith('/auth/'))
         >
           <p>© {{ year }} {{ appName }}</p>
           <nav aria-label="Footer" class="flex flex-wrap items-center gap-x-6 gap-y-2">
+            <ULink to="/how" class="text-muted hover:text-default">How it works</ULink>
             <ULink to="/privacy" class="text-muted hover:text-default">Privacy</ULink>
             <ULink to="/terms" class="text-muted hover:text-default">Terms</ULink>
             <ULink to="/changelog" class="text-muted hover:text-default">Changelog</ULink>

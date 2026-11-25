@@ -49,6 +49,16 @@ const ROUTES = [
   '/unsubscribe',
   '/terms',
   '/privacy',
+  // The explainer pages (layers/how).
+  '/how',
+  '/how/letters',
+  '/how/family',
+  '/how/child',
+  '/how/anniversary',
+  '/how/post',
+  '/how/who-reads',
+  '/how/keys',
+  '/how/joining',
 ]
 
 const WCAG_TAGS = [
