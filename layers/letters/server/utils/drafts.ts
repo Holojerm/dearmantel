@@ -8,11 +8,11 @@ import * as tables from '@nuxthub/db/schema'
 import { batchGuard, isGuardFailure, mantelKeyIs } from '#layers/keys/server/utils/batch-guard'
 import { isKeeper } from '#layers/keys/server/utils/mantels'
 
-import { isSealedOn, mantelToday } from './kept-mantel'
 import { hasReceived } from './mantel'
 import { newsMantelOf } from './news'
 import type { LettersDb } from './people'
 import type { PhotoStore } from './photos'
+import { sealedFor } from './seal-gate'
 
 /**
  * Everyone else in an open correspondence the user belongs to. Null when they
@@ -140,17 +140,6 @@ export async function saveDraft(
     throw error
   }
   return 'saved'
-}
-
-/** A letter sealed until a day that has not come for this reader: nobody answers it yet. */
-async function sealedFor(db: LettersDb, readerId: string, letterId: string, now: Date) {
-  const { letters } = tables
-  const [row] = await db
-    .select({ opensOn: letters.opensOn })
-    .from(letters)
-    .where(eq(letters.id, letterId))
-    .limit(1)
-  return Boolean(row?.opensOn) && isSealedOn(row!.opensOn, await mantelToday(db, readerId, now))
 }
 
 /** A letter as its author may read it back: the ciphertext and their own key. */

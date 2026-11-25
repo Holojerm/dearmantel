@@ -31,6 +31,7 @@ test('a kept mantel: opened, its code shown once, a second keeper seated', async
   const sent = (await created).postDataJSON() as Record<string, string>
   expect(Object.keys(sent).toSorted()).toEqual(
     [
+      'handoverOn',
       'id',
       'keeperWrap',
       'kind',
@@ -41,6 +42,8 @@ test('a kept mantel: opened, its code shown once, a second keeper seated', async
     ].toSorted(),
   )
   expect(sent.keeperWrap).toMatch(/^v1\./)
+  // A child's mantel is handed over on a day set now, 18 years on unless changed.
+  expect(sent.handoverOn).toMatch(/^\d{4}-\d{2}-\d{2}$/)
   expect(sent.recoveryWrap).toMatch(/^v1\./)
 
   await expect(ann.getByRole('heading', { name: "The mantel's recovery code" })).toBeVisible()

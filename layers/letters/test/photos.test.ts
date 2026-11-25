@@ -58,7 +58,7 @@ const stored = async (photoId: string) =>
 const attach = (author: string, photoId: string, fill = 7) =>
   attachPhoto(db, store, author, { letterId: LETTER, photoId, bytes: sealedFile(fill) }, MONDAY)
 const firstByte = async (userId: string) => {
-  const file = await readPhoto(db, store, userId, LETTER)
+  const file = await readPhoto(db, store, userId, LETTER, MONDAY)
   return file ? new Uint8Array(file)[0] : null
 }
 

@@ -14,6 +14,8 @@ export interface MantelItem {
   /** The mail day it arrived on, 'YYYY-MM-DD'. */
   arrivedOn: string | null
   opened: boolean
+  /** 'YYYY-MM-DD' while the letter is sealed until that day, on the reader's calendar. */
+  sealedUntil: string | null
 }
 
 export interface OpenedLetter {

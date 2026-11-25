@@ -33,9 +33,13 @@ export function isGuardFailure(error: unknown): boolean {
   return false
 }
 
-/** True while the mantel's key is still the one a browser wrapped to. */
+/**
+ * True while the mantel's key is still the one a browser wrapped to, and the
+ * mantel is open: once handed over, nothing more is filed under its id.
+ */
 export const mantelKeyIs = (mantelId: string, publicKey: string) =>
-  sql`EXISTS (SELECT 1 FROM mantels WHERE id = ${mantelId} AND public_key = ${publicKey})`
+  sql`EXISTS (SELECT 1 FROM mantels
+    WHERE id = ${mantelId} AND public_key = ${publicKey} AND closed_at IS NULL)`
 
 /** True while the mantel has not been re-keyed since a browser read this version. */
 export const mantelKeyVersionIs = (mantelId: string, keyVersion: number) =>

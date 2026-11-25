@@ -18,7 +18,7 @@ notices and print:
 | --- | --- | --- |
 | Pair | Letters between two friends. The free tier | Built |
 | Family mantel | Letters to a whole family, plus an optional family room (photos, check-ins, map, e-ink screen) that is **not** encrypted | Planned |
-| Child's mantel | Letters to someone who cannot read yet, sealed until a date or until handover, and letters back that a guardian writes as the child; two guardians hold the key | Planned |
+| Child's mantel | Letters to someone who cannot read yet, sealed until a date, and letters back that a guardian writes as the child; two guardians hold the key until the handover day, when the letters become the child's own | Planned |
 | Anniversary letters | Wedding guests write to a couple from a QR card; the letters open on the first anniversary | Planned |
 
 A fork of `Holojerm/nuxt-cf-template`. Licence is FSL-1.1-MIT (see `NOTICE.md`); do not accept
@@ -137,7 +137,30 @@ the hash of a proof the code derives (`recoveryProof`). A keeper who uses it rep
 own copy of the key at once. Anyone else waits `RECOVERY_WAIT_DAYS` while every keeper is
 emailed (`mantel-recovery`) and any of them can cancel. Do not add a path that writes
 `mantel_keepers` or `mantel_key_wraps` outside `custody.ts`, `mantels.ts`, `recovery.ts`,
-`recovery-code.ts` and `rekey.ts`.
+`recovery-code.ts`, `rekey.ts` and `handover.ts`.
+
+Handing a child's mantel over (`layers/keys/server/utils/handover.ts`, `handover-date.ts`, and
+`layers/letters/server/utils/handover-letters.ts` for the letters): `mantels.handoverOn` is set
+when the mantel is opened, so the handover needs no vote and keepers who never agree cannot
+hold it back; moving the day (or setting it on a mantel opened before there was one) is a
+`handover_date` proposal carried like any custody change, refused once the day has come. Any one
+keeper names the child's address (`nameChild`), never a keeper's, and every other keeper is
+emailed (`mantel-handover-named`). From the day, on the mantel's calendar, the address is
+invited (`mantel-handover`, by the daily `mantel-handover` task or at once when named late),
+the child accepts from that address with keys, and a keeper's browser wraps the mantel's key to
+the child after the fingerprint check (`giveHandoverKey`, guarded on `keyVersion`). The child's
+browser wraps every letter key the mantel holds again to their own key (`useHandover`,
+`wrapLetterKeysForChild`, which opens each new copy again before it is sent) and stores them in
+`handover_keys`, which nothing reads, a batch at a time, so a closed browser resumes. The last
+step (`closeHandover`) is one batch that cannot be undone: a guard refuses it while any of the
+mantel's letter keys has no copy waiting or the handover is no longer ready, then it files the
+copies as the child's `letter_keys`, moves every delivery, letter author and correspondence
+membership from the mantel's id to the child's, closes the news, and (`handoverCloseStatements`)
+deletes every copy of the mantel's key, ends every keeper, and sets `handedOverAt`,
+`handedOverTo` and `closedAt`. Run twice it answers the same. A sealed letter keeps `opensOn`,
+and a person's own mantel withholds it until then (`seal-gate.ts`: `listMantel`, `openLetter`,
+`readPhoto`, the export's keys). `mantelKeyIs` refuses a closed mantel, so nothing more is filed
+under its id.
 
 A new recovery code without a new key (`recovery-code.ts`, `MantelRecoveryCode` on the
 mantel's page): for a printed code that was lost or seen. There is one code a mantel, so the
@@ -211,7 +234,7 @@ A reply from the mantel may answer only a letter whose day has come (`saveDraft`
 the mantel wrote that comes back is a `return` delivery to the mantel's id; keepers see and open
 it on the mantel's page through `kept-mantel.ts`, and a keeper's copy (`kept-archive.ts`) holds
 everything the mantel sealed (`kept-sent.ts`), once each. All of it stays keyed by the mantel's
-id, which is what handover moves to the child. Anyone else writes after a keeper invites them: the same
+id, which is what handover moves to the child (`closeHandover`). Anyone else writes after a keeper invites them: the same
 invitation as between two people, with `invites.mantelId` set, its own email
 (`mantel-invite`), and acceptance making a correspondence with the mantel rather than with
 the keeper. A writer who is not a keeper reads nothing on the mantel, and no writer sees

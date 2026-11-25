@@ -47,6 +47,7 @@ const leo = (id = MANTEL) => ({
   keeperWrap: keeperWrap('ann'),
   recoveryWrap: RECOVERY_WRAP,
   recoveryProofHash: 'a'.repeat(64),
+  handoverOn: '2044-06-14',
 })
 
 const wrapsOf = async () =>

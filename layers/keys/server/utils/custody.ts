@@ -14,46 +14,11 @@ import { normalizeEmail } from '#server/utils/users'
 
 import { carries, PROPOSAL_TTL_DAYS, type KeeperRole } from '../../shared/utils/mantel-format'
 import { batchGuard, isGuardFailure, mantelKeyVersionIs } from './batch-guard'
+import { applyHandoverDateIfCarried } from './handover-date'
 import { keeperRemovalStatements } from './keeper-removal'
 import type { KeysDb } from './keys'
 import { keepersOf } from './mantels'
-
-const DAY_MS = 24 * 60 * 60 * 1000
-
-async function openProposal(db: KeysDb, proposalId: string, now: Date) {
-  const { mantelProposals } = tables
-  const [proposal] = await db
-    .select()
-    .from(mantelProposals)
-    .where(and(eq(mantelProposals.id, proposalId), isNull(mantelProposals.outcome)))
-    .limit(1)
-  return proposal && proposal.expiresAt > now ? proposal : null
-}
-
-async function votesFor(db: KeysDb, proposalId: string, keeperIds: string[]): Promise<number> {
-  const { mantelVotes } = tables
-  const votes = await db
-    .select({ userId: mantelVotes.userId })
-    .from(mantelVotes)
-    .where(eq(mantelVotes.proposalId, proposalId))
-  // Only the votes of people who keep the mantel now.
-  return votes.filter((vote) => keeperIds.includes(vote.userId)).length
-}
-
-async function isCarried(db: KeysDb, proposalId: string, mantelId: string): Promise<boolean> {
-  const keeperIds = (await keepersOf(db, mantelId)).map((keeper) => keeper.userId)
-  return carries(await votesFor(db, proposalId, keeperIds), keeperIds.length)
-}
-
-async function mantelIsOpen(db: KeysDb, mantelId: string): Promise<boolean> {
-  const { mantels } = tables
-  const [mantel] = await db
-    .select({ closedAt: mantels.closedAt })
-    .from(mantels)
-    .where(eq(mantels.id, mantelId))
-    .limit(1)
-  return Boolean(mantel) && !mantel?.closedAt
-}
+import { DAY_MS, isCarried, mantelIsOpen, openProposal } from './proposal-votes'
 
 export type ProposeResult =
   | { result: 'proposed'; proposalId: string }
@@ -197,6 +162,7 @@ export async function voteForProposal(
     .values({ proposalId, userId: keeperId, createdAt: now })
     .onConflictDoNothing()
   await applyRemovalIfCarried(db, proposalId, now)
+  await applyHandoverDateIfCarried(db, proposalId, now)
   return 'voted'
 }
 
@@ -394,7 +360,8 @@ export async function proposalsOf(db: KeysDb, keeperId: string, mantelId: string
     const counted = votes.filter((vote) => keeperIds.includes(vote.userId))
     proposals.push({
       id: proposal.id,
-      kind: proposal.kind as 'add_keeper' | 'remove_keeper',
+      kind: proposal.kind as 'add_keeper' | 'remove_keeper' | 'handover_date',
+      handoverOn: proposal.handoverOn,
       // A keeper typed this address, so keepers may see it.
       email: proposal.subjectEmail,
       subjectId: proposal.subjectId,

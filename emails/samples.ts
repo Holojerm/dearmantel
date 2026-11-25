@@ -52,6 +52,24 @@ export const SAMPLES: Record<string, EmailSample> = {
     readyDate: 'December 16, 2026',
     url: `${brand.appUrl}/mantels/4b0f6c1e-0d3a-4c1f-9e57-1f2f6b6f0a11`,
   },
+  'mantel-handover': {
+    ...brand,
+    mantelName: 'Leo',
+    url: `${brand.appUrl}/mantels`,
+  },
+  'mantel-handover-named': {
+    ...brand,
+    mantelName: 'Leo',
+    keeperName: 'Ada Lovelace',
+    email: 'leo@example.com',
+    handoverDate: 'June 14, 2044',
+    url: `${brand.appUrl}/mantels/4b0f6c1e-0d3a-4c1f-9e57-1f2f6b6f0a11`,
+  },
+  'mantel-handover-due': {
+    ...brand,
+    mantelName: 'Leo',
+    url: `${brand.appUrl}/mantels/4b0f6c1e-0d3a-4c1f-9e57-1f2f6b6f0a11`,
+  },
   'magic-link': {
     ...brand,
     url: `${brand.appUrl}/auth/confirm?token=2f9c1d`,

@@ -106,7 +106,12 @@ export function useMantelKeys() {
     myFingerprint: async () => keyFingerprint(await myPublicKey()),
 
     /** Makes a mantel's keys here and opens it. Returns its recovery code, shown once. */
-    async create(input: { kind: MantelKind; name: string }): Promise<{ id: string; code: string }> {
+    async create(input: {
+      kind: MantelKind
+      name: string
+      /** A child's mantel: the day it becomes the child's own. */
+      handoverOn?: string
+    }): Promise<{ id: string; code: string }> {
       const id = crypto.randomUUID()
       const pair = await generateMantelKeys()
       const secret = crypto.getRandomValues(new Uint8Array(RECOVERY_CODE_BYTES))
@@ -177,6 +182,37 @@ export function useMantelKeys() {
         { method: 'POST', body: { id: proposalId } },
       )
       return { ...seat, fingerprint: await keyFingerprint(seat.publicKey) }
+    },
+
+    /** The key of the child a mantel is being handed over to, and its fingerprint. */
+    async childToSeat(mantelId: string) {
+      const seat = await $fetch<{ childId: string; publicKey: string }>(
+        '/api/mantels/handover/seat',
+        { method: 'POST', body: { mantelId } },
+      )
+      return { ...seat, fingerprint: await keyFingerprint(seat.publicKey) }
+    },
+
+    /** Wraps the mantel's key to the child, after the fingerprints matched. */
+    async giveToChild(
+      mantel: KeptMantel,
+      seat: { childId: string; publicKey: string },
+    ): Promise<boolean> {
+      const mantelKey = await open(mantel)
+      if (!mantelKey) return false
+      await $fetch('/api/mantels/handover/seat', {
+        method: 'POST',
+        body: {
+          mantelId: mantel.id,
+          childId: seat.childId,
+          keyVersion: mantel.keyVersion,
+          wrapped: await wrapMantelKeyForKeeper(seat.publicKey, mantelKey, {
+            mantelId: mantel.id,
+            keeperId: seat.childId,
+          }),
+        },
+      })
+      return true
     },
 
     /** Wraps the mantel's key to the new keeper, after the fingerprints matched. */

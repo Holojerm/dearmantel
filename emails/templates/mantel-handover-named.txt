@@ -1,0 +1,9 @@
+An address was given for {{mantelName}}
+
+{{keeperName}}, who keeps {{mantelName}}'s mantel with you, gave {{email}} as the address {{mantelName}} will take the mantel with. It is invited on the handover day, {{handoverDate}}.
+
+If that address is not {{mantelName}}'s, change it on the mantel's page before the key is handed over: any keeper can.
+
+Open the mantel: {{url}}
+
+{{appUrl}}

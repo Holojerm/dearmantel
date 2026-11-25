@@ -13,7 +13,8 @@ interface Keeper {
 }
 interface Proposal {
   id: string
-  kind: 'add_keeper' | 'remove_keeper'
+  kind: 'add_keeper' | 'remove_keeper' | 'handover_date'
+  handoverOn: string | null
   email: string | null
   subjectId: string | null
   name: string | null
@@ -40,6 +41,16 @@ interface MantelView {
   keepers: Keeper[]
   proposals: Proposal[]
   recoveries: { id: string; name: string | null; readyAt: string }[]
+  childHandover: {
+    handoverOn: string | null
+    due: boolean
+    email: string | null
+    namedBy: string | null
+    invited: boolean
+    childId: string | null
+    childName: string | null
+    keyGiven: boolean
+  } | null
 }
 interface Seat {
   subjectId: string
@@ -156,6 +167,22 @@ const grant = (id: string) =>
   })
 
 const subject = (proposal: Proposal) => proposal.name ?? proposal.email ?? 'someone'
+const onDay = (on: string | null) =>
+  on
+    ? new Date(`${on}T12:00:00Z`).toLocaleDateString(undefined, {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        timeZone: 'UTC',
+      })
+    : ''
+function describe(proposal: Proposal): string {
+  if (proposal.kind === 'handover_date')
+    return `Hand the mantel over on ${onDay(proposal.handoverOn)}`
+  return proposal.kind === 'add_keeper'
+    ? `Add ${subject(proposal)} as a keeper`
+    : `${subject(proposal)} stops keeping this mantel`
+}
 
 useSeo({ title: 'A mantel you keep', description: 'Who keeps this mantel.', noindex: true })
 </script>
@@ -232,6 +259,12 @@ useSeo({ title: 'A mantel you keep', description: 'Who keeps this mantel.', noin
         :mantel-id="mantel.id"
         :name="mantel.name"
       />
+      <MantelHandover
+        v-if="mantel.childHandover"
+        :mantel="{ ...mantel, childHandover: mantel.childHandover }"
+        :can-open="canOpen"
+        @done="load"
+      />
       <LettersGuestLink
         v-if="mantel.kind === 'anniversary'"
         :mantel-id="mantel.id"
@@ -288,13 +321,7 @@ useSeo({ title: 'A mantel you keep', description: 'Who keeps this mantel.', noin
         <h2 id="proposals-heading" class="text-xl text-highlighted">Waiting to be settled</h2>
         <UCard v-for="proposal in mantel.proposals" :key="proposal.id">
           <div class="flex flex-col gap-3">
-            <p class="text-highlighted">
-              {{
-                proposal.kind === 'add_keeper'
-                  ? `Add ${subject(proposal)} as a keeper`
-                  : `${subject(proposal)} stops keeping this mantel`
-              }}
-            </p>
+            <p class="text-highlighted">{{ describe(proposal) }}</p>
             <p class="text-sm text-muted">
               {{ proposal.votes }} of {{ proposal.keepers }} keepers agree.
               <template v-if="proposal.kind === 'add_keeper' && !proposal.accepted">

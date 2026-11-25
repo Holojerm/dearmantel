@@ -115,6 +115,19 @@
       withheld.
     </p>
     <p>
+      <strong class="text-highlighted">Handing a child's mantel over.</strong> A child's mantel
+      becomes the child's on a day its keepers set when they opened it. From that day we email the
+      address a keeper gave for the child, and tell the other keepers which address it was. Once the
+      child has an account, a keeper's browser locks the mantel's key to the child's own key, after
+      the two compare a short code, so we cannot slip in a key of our own. The child's browser then
+      locks each letter's key again to the child's key; meanwhile we hold those copies and read
+      nothing. Then, at once, we delete the mantel's key, every keeper's copy and the recovery
+      code's, and every letter is the child's. Letters sealed until a later day stay sealed on the
+      child's mantel. A keeper who kept a copy of the old key could still open the letters as they
+      were stored before, if our stored letters ever leaked; we no longer serve them anything to
+      open.
+    </p>
+    <p>
       <strong class="text-highlighted">Letters from guests.</strong> A couple can print a link that
       lets wedding guests write to them without an account. A guest's letter is encrypted in the
       guest's browser to the couple's key, with the name they signed inside it. We learn when a

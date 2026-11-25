@@ -7,6 +7,8 @@ import * as tables from '@nuxthub/db/schema'
 
 import type { MantelItem, OpenedLetter } from '../../shared/utils/mantel'
 import type { LettersDb } from './people'
+import { isSealedOn } from './kept-mantel'
+import { readerToday } from './seal-gate'
 
 /** What each person, or each child's mantel that writes, is called. */
 export async function displayNames(db: LettersDb, ids: string[]): Promise<Map<string, string>> {
@@ -58,6 +60,7 @@ async function delivered(db: LettersDb, userId: string, letterId?: string) {
       openedAt: deliveries.openedAt,
       ciphertext: letters.ciphertext,
       inReplyTo: letters.inReplyTo,
+      opensOn: letters.opensOn,
       // The child's name when the letter is news of them.
       news: mantels.name,
     })
@@ -75,8 +78,9 @@ async function delivered(db: LettersDb, userId: string, letterId?: string) {
     .orderBy(desc(deliveries.deliveredAt))
 }
 
-export async function listMantel(db: LettersDb, userId: string): Promise<MantelItem[]> {
+export async function listMantel(db: LettersDb, userId: string, now: Date): Promise<MantelItem[]> {
   const rows = await delivered(db, userId)
+  const today = await readerToday(db, userId, now)
   const others = new Map<string, string | null>()
   for (const row of rows) {
     // Returned news has no one name to go under.
@@ -99,6 +103,7 @@ export async function listMantel(db: LettersDb, userId: string): Promise<MantelI
     postmark: row.postmark,
     arrivedOn: row.arrivedOn,
     opened: Boolean(row.openedAt),
+    sealedUntil: isSealedOn(row.opensOn, today) ? row.opensOn : null,
   }))
 }
 
@@ -115,6 +120,8 @@ export async function openLetter(
   const { deliveries, letterKeys, correspondences } = tables
   const [row] = await delivered(db, userId, letterId)
   if (!row) return null
+  // Sealed until a day that has not come: nothing of it yet, and no opening.
+  if (isSealedOn(row.opensOn, await readerToday(db, userId, now))) return null
   const [key] = await db
     .select({ wrappedKey: letterKeys.wrappedKey })
     .from(letterKeys)

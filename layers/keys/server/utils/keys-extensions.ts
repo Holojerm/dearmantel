@@ -57,6 +57,7 @@ export function registerKeysExtensions(): void {
     mantelKeyWraps,
     mantelProposals,
     mantelRecoveries,
+    mantelHandovers,
   } = tables
 
   // When mail arrives on a kept mantel, its keepers are the ones to tell.
@@ -175,6 +176,18 @@ export function registerKeysExtensions(): void {
             isNull(mantelRecoveries.completedAt),
           ),
         ),
+      // A child's mantel being handed over to them waits for another address.
+      db
+        .update(mantelHandovers)
+        .set({
+          childId: null,
+          acceptedAt: null,
+          invitedAt: null,
+          wrapped: null,
+          keyVersion: null,
+          givenBy: null,
+        })
+        .where(and(eq(mantelHandovers.childId, userId), isNull(mantelHandovers.completedAt))),
       db.delete(keyWraps).where(eq(keyWraps.userId, userId)),
       db.delete(userKeys).where(eq(userKeys.userId, userId)),
     ],

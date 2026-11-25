@@ -155,6 +155,6 @@ describe('deleting an account', () => {
     expect(await ownLetter(db, 'bob', FROM_BOB)).not.toBeNull()
     // The letter that was still on its way to her comes back to Bob.
     expect(await deliveryOf(SECOND_FROM_BOB, 'return')).toMatchObject({ recipientId: 'bob' })
-    expect((await listMantel(db, 'bob')).map((item) => item.letterId)).toEqual([FROM_ANN])
+    expect((await listMantel(db, 'bob', FRIDAY)).map((item) => item.letterId)).toEqual([FROM_ANN])
   })
 })

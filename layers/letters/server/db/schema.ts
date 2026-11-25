@@ -195,6 +195,24 @@ export const letterKeys = sqliteTable(
   ],
 )
 
+// A child's mantel being handed over: each letter key the mantel holds,
+// wrapped again in the child's browser to the child's own key. Nothing reads
+// these until the last step, which files them as the child's `letter_keys`
+// and deletes the mantel's in one batch
+// (layers/letters/server/utils/handover-letters.ts). A browser that closes
+// halfway picks up from what is here.
+export const handoverKeys = sqliteTable(
+  'handover_keys',
+  {
+    id: id(),
+    mantelId: text('mantel_id').notNull(),
+    letterId: text('letter_id').notNull(),
+    wrappedKey: text('wrapped_key').notNull(),
+    ...timestamps,
+  },
+  (table) => [uniqueIndex('handover_keys_letter_idx').on(table.mantelId, table.letterId)],
+)
+
 export type Person = typeof people.$inferSelect
 export type Correspondence = typeof correspondences.$inferSelect
 export type Family = typeof families.$inferSelect

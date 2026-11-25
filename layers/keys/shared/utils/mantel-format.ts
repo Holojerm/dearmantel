@@ -31,15 +31,34 @@ export const HANDOVER_SEPARATOR = '~'
 
 export const mantelNameSchema = z.string().trim().min(1).max(60)
 
-export const newMantelSchema = z.object({
-  id: z.string().uuid(),
-  kind: z.enum(MANTEL_KINDS),
-  name: mantelNameSchema,
-  publicKey: z.string().regex(PUBLIC_KEY_PATTERN),
-  keeperWrap: z.string().regex(KEEPER_WRAP_PATTERN),
-  recoveryWrap: z.string().regex(WRAPPED_KEY_PATTERN),
-  recoveryProofHash: z.string().regex(/^[0-9a-f]{64}$/),
-})
+/** A calendar day, 'YYYY-MM-DD'. */
+export const daySchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/)
+
+/** How far ahead a child's handover day may be set. */
+export const HANDOVER_MAX_YEARS = 30
+
+/** Whether `on` is a handover day that may be set today: after today, and not too far off. */
+export function isHandoverDay(on: string, today: string): boolean {
+  const latest = `${Number(today.slice(0, 4)) + HANDOVER_MAX_YEARS}${today.slice(4)}`
+  return daySchema.safeParse(on).success && on > today && on <= latest
+}
+
+export const newMantelSchema = z
+  .object({
+    id: z.string().uuid(),
+    kind: z.enum(MANTEL_KINDS),
+    name: mantelNameSchema,
+    publicKey: z.string().regex(PUBLIC_KEY_PATTERN),
+    keeperWrap: z.string().regex(KEEPER_WRAP_PATTERN),
+    recoveryWrap: z.string().regex(WRAPPED_KEY_PATTERN),
+    recoveryProofHash: z.string().regex(/^[0-9a-f]{64}$/),
+    /** A child's mantel only: the day it becomes the child's own. */
+    handoverOn: daySchema.optional(),
+  })
+  .refine((mantel) => (mantel.kind === 'child') === Boolean(mantel.handoverOn), {
+    message: "A child's mantel needs a handover day, and only a child's mantel has one.",
+    path: ['handoverOn'],
+  })
 
 /** What the recovery code derives to prove itself: 32 bytes, base64url. */
 export const recoveryProofSchema = z.string().regex(/^[A-Za-z0-9_-]{43}$/)

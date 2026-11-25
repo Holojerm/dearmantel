@@ -95,7 +95,7 @@ beforeEach(async () => {
 
 describe('before delivery', () => {
   it('shows the recipient nothing and opens nothing', async () => {
-    expect(await listMantel(db, 'bob')).toEqual([])
+    expect(await listMantel(db, 'bob', FRIDAY)).toEqual([])
     expect(await openLetter(db, 'bob', LETTER, FRIDAY)).toBeNull()
   })
 })
@@ -104,7 +104,7 @@ describe('after delivery', () => {
   beforeEach(() => deliver(LETTER))
 
   it('lists the letter for its recipient only, unopened, with its sender and postmark', async () => {
-    expect(await listMantel(db, 'bob')).toEqual([
+    expect(await listMantel(db, 'bob', FRIDAY)).toEqual([
       {
         letterId: LETTER,
         correspondenceId: 'pair',
@@ -114,10 +114,11 @@ describe('after delivery', () => {
         postmark: '2026-11-16',
         arrivedOn: '2026-11-20',
         opened: false,
+        sealedUntil: null,
       },
     ])
-    expect(await listMantel(db, 'ann')).toEqual([])
-    expect(await listMantel(db, 'eve')).toEqual([])
+    expect(await listMantel(db, 'ann', FRIDAY)).toEqual([])
+    expect(await listMantel(db, 'eve', FRIDAY)).toEqual([])
   })
 
   it('opens for the recipient with their own key, and records the first opening once', async () => {
@@ -129,7 +130,7 @@ describe('after delivery', () => {
       wrappedKey: 'key-for-bob',
       canReply: true,
     })
-    expect((await listMantel(db, 'bob'))[0]?.opened).toBe(true)
+    expect((await listMantel(db, 'bob', FRIDAY))[0]?.opened).toBe(true)
 
     await openLetter(db, 'bob', LETTER, new Date(FRIDAY.getTime() + 60_000))
     const [delivery] = await db.select().from(deliveries)
@@ -178,8 +179,10 @@ describe('a returned letter', () => {
       mailDate: '2026-11-21',
     })
 
-    expect(await listMantel(db, 'bob')).toEqual([])
-    expect(await listMantel(db, 'ann')).toMatchObject([{ kind: 'return', name: 'Bob Stone' }])
+    expect(await listMantel(db, 'bob', FRIDAY)).toEqual([])
+    expect(await listMantel(db, 'ann', FRIDAY)).toMatchObject([
+      { kind: 'return', name: 'Bob Stone' },
+    ])
     expect(await openLetter(db, 'ann', LETTER, FRIDAY)).toMatchObject({
       kind: 'return',
       name: 'Bob Stone',

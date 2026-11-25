@@ -6,7 +6,7 @@ import { db } from '@nuxthub/db'
 
 import { postNow } from '#layers/post/server/utils/clock'
 
-import { newMantelSchema } from '../../../shared/utils/mantel-format'
+import { HANDOVER_MAX_YEARS, newMantelSchema } from '../../../shared/utils/mantel-format'
 import { createMantel } from '../../utils/mantels'
 
 export default defineEventHandler(async (event) => {
@@ -21,6 +21,12 @@ export default defineEventHandler(async (event) => {
   const result = await createMantel(db, user.id, body, await postNow())
   if (result === 'no-keys') {
     throw createError({ statusCode: 409, message: 'Set up your own keys first.' })
+  }
+  if (result === 'bad-day') {
+    throw createError({
+      statusCode: 400,
+      message: `Choose a handover day after today and within ${HANDOVER_MAX_YEARS} years.`,
+    })
   }
   if (result === 'exists') {
     throw createError({ statusCode: 409, message: 'That mantel already exists.' })
