@@ -104,7 +104,10 @@ useSeo({ title: 'A letter', description: 'A letter on a mantel you keep.', noind
     <template v-else>
       <div>
         <h1 class="text-3xl text-highlighted">{{ heading }}</h1>
-        <p v-if="opened?.postmark" class="mt-1 text-sm text-muted">
+        <p
+          v-if="opened?.postmark"
+          class="mt-2 font-mono text-xs tracking-wide text-muted uppercase"
+        >
           Postmarked {{ longDay(opened.postmark) }}
         </p>
       </div>
@@ -132,6 +135,9 @@ useSeo({ title: 'A letter', description: 'A letter on a mantel you keep.', noind
         :description="`This letter could not be delivered, so it has come back to ${mantelName}'s mantel.`"
       />
       <LetterPaper v-if="doc" :doc="doc" :photo-url="photoUrl" />
+      <WhoReads v-if="doc" encrypted>
+        This letter was opened on your device with {{ mantelName }}'s key. We cannot read it.
+      </WhoReads>
       <div class="flex flex-wrap items-center justify-between gap-4">
         <UButton variant="ghost" color="neutral" :to="`/mantels/${mantelId}`">
           Back to the mantel

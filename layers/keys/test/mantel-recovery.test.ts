@@ -25,6 +25,7 @@ import {
   finishRecovery,
   myRecoveries,
   recoveriesOf,
+  unkeptClaims,
 } from '../server/utils/recovery'
 import { RECOVERY_WAIT_DAYS } from '../shared/utils/mantel-format'
 
@@ -128,6 +129,17 @@ describe('using the code', () => {
     expect(await recoveriesOf(db, 'ann', MANTEL)).toMatchObject([{ name: 'bob' }])
     expect(await recoveriesOf(db, 'bob', MANTEL)).toEqual([])
     expect(await myRecoveries(db, 'bob', NOW)).toMatchObject([{ mantelName: 'Leo', ready: false }])
+  })
+
+  it('tells which claims wait on a mantel nobody keeps now', async () => {
+    await claim('bob')
+    const [row] = await db.select().from(mantelRecoveries)
+
+    expect(await unkeptClaims(db, [row!.id])).toEqual(new Set())
+    // Its only keeper deleted their account.
+    await db.update(mantelKeepers).set({ leftAt: NOW })
+    expect(await unkeptClaims(db, [row!.id])).toEqual(new Set([row!.id]))
+    expect(await unkeptClaims(db, [])).toEqual(new Set())
   })
 
   it('cannot be finished before the wait is over, or by anyone but the claimant', async () => {

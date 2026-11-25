@@ -18,6 +18,14 @@ const problems = reactive<Record<string, string>>({})
 const checking = ref<string | null>(null)
 const understood = ref(false)
 
+// This appears under the email field after the first press of delete, which
+// then turns disabled and drops focus to the page. Bring the keeper here.
+const lead = useTemplateRef<HTMLParagraphElement>('lead')
+onMounted(() => {
+  lead.value?.focus({ preventScroll: true })
+  lead.value?.scrollIntoView({ block: 'start' })
+})
+
 const names = computed(() => props.mantels.map((mantel) => `${mantel.name}'s mantel`).join(' and '))
 const hasAnniversary = computed(() => props.mantels.some((m) => m.kind === 'anniversary'))
 const one = computed(() => props.mantels.length === 1)
@@ -53,7 +61,7 @@ async function check(id: string) {
 
 <template>
   <div class="flex flex-col gap-4">
-    <p class="text-highlighted">You are the only keeper of {{ names }}.</p>
+    <p ref="lead" tabindex="-1" class="text-highlighted">You are the only keeper of {{ names }}.</p>
     <p class="text-muted">
       Your account can go, but {{ one ? 'the mantel stays' : 'the mantels stay' }}: a mantel belongs
       to the person it is kept for. This is what happens after you delete your account:

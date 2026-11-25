@@ -15,6 +15,8 @@ interface Recovery {
   mantelName: string
   readyAt: string
   ready: boolean
+  /** Its only keeper deleted their account, so nobody can cancel the claim. */
+  unkept: boolean
 }
 interface Handover {
   mantelId: string
@@ -161,13 +163,19 @@ useSeo({
       <UCard v-for="claim in recoveries" :key="claim.id">
         <div class="flex flex-col gap-3">
           <p class="text-highlighted">{{ claim.mantelName }}</p>
-          <p class="text-sm text-muted">
-            {{
-              claim.ready
-                ? 'The wait is over and no keeper cancelled it.'
-                : `Its keepers can cancel this until ${day(claim.readyAt)}.`
-            }}
+          <p v-if="claim.ready" class="text-sm text-muted">
+            The wait is over and no keeper cancelled it.
           </p>
+          <!-- The day is in this device's time zone, which the server rendering the page does not know. -->
+          <ClientOnly v-else>
+            <p class="text-sm text-muted">
+              {{
+                claim.unkept
+                  ? `Nobody keeps ${claim.mantelName}'s mantel now, so nobody can cancel this. You can become its keeper on ${day(claim.readyAt)}.`
+                  : `Its keepers can cancel this until ${day(claim.readyAt)}.`
+              }}
+            </p>
+          </ClientOnly>
           <div class="flex gap-3">
             <UButton v-if="claim.ready" @click="recovery(claim.id, 'finish')">
               Become a keeper
