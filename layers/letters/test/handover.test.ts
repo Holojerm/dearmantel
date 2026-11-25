@@ -346,6 +346,19 @@ describe('making the letters the child’s', () => {
     expect(own?.authorId).toBe('leo')
   })
 
+  it('hands over a mantel its keepers closed, and keeps the day it closed', async () => {
+    // Closing ends writing, not the child's claim (layers/keys/server/utils/close-mantel.ts).
+    await db.update(mantels).set({ closedAt: MONDAY }).where(eq(mantels.id, LEO))
+    expect(await handoverForKeeper(db, 'ann', LEO, FRIDAY)).not.toBeNull()
+    await stageAll()
+    expect(await closeHandover(db, 'leo', LEO, FRIDAY)).toBe('handed-over')
+    const [mantel] = await db.select().from(mantels).where(eq(mantels.id, LEO))
+    expect(mantel).toMatchObject({ handedOverTo: 'leo', closedAt: MONDAY })
+    expect(await db.select().from(mantelKeyWraps).where(eq(mantelKeyWraps.mantelId, LEO))).toEqual(
+      [],
+    )
+  })
+
   it('keeps a sealed letter sealed on the child’s own mantel', async () => {
     await stageAll()
     await closeHandover(db, 'leo', LEO, FRIDAY)

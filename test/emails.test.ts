@@ -27,6 +27,8 @@ const ACTION_URL: Record<EmailName, (data: Record<string, unknown>) => string> =
   'mantel-handover': (d) => String(d.url),
   'mantel-handover-named': (d) => String(d.url),
   'mantel-handover-due': (d) => String(d.url),
+  'mantel-closed': (d) => String(d.url),
+  'mantel-closed-keepers': (d) => String(d.url),
   'mail-arrived': (d) => `${d.appUrl}/mantel`,
   'magic-link': (d) => String(d.url),
   'password-reset': (d) => String(d.url),

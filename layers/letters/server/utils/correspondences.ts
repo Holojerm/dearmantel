@@ -6,6 +6,7 @@ import * as tables from '@nuxthub/db/schema'
 
 import type { OpenInviteView, PersonView } from '../../shared/utils/invites'
 import { isKeeper } from '#layers/keys/server/utils/mantels'
+import { mantelIsOpen } from '#layers/keys/server/utils/proposal-votes'
 
 import type { LettersDb } from './people'
 
@@ -49,6 +50,8 @@ export async function openMantelCorrespondence(
 ): Promise<string | null> {
   const { correspondences, correspondenceMembers: members } = tables
   if (!(await isKeeper(db, keeperId, mantelId))) return null
+  // Nobody writes to a closed mantel, its keepers included.
+  if (!(await mantelIsOpen(db, mantelId))) return null
   const existing = await openCorrespondenceBetween(db, keeperId, mantelId)
   if (existing) return existing
   const id = crypto.randomUUID()

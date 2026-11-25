@@ -32,7 +32,7 @@ export async function dueHandovers(db: KeysDb, now: Date) {
     .where(
       and(
         eq(mantels.kind, 'child'),
-        isNull(mantels.closedAt),
+        isNull(mantels.handedOverAt),
         isNotNull(mantels.handoverOn),
         sql`${mantels.handoverOn} <= ${soon}`,
         or(

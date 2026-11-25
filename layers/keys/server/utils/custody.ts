@@ -14,6 +14,7 @@ import { normalizeEmail } from '#server/utils/users'
 
 import { carries, PROPOSAL_TTL_DAYS, type KeeperRole } from '../../shared/utils/mantel-format'
 import { batchGuard, isGuardFailure, mantelKeyVersionIs } from './batch-guard'
+import { applyCloseIfCarried } from './close-mantel'
 import { applyHandoverDateIfCarried } from './handover-date'
 import { keeperRemovalStatements } from './keeper-removal'
 import type { KeysDb } from './keys'
@@ -77,6 +78,7 @@ export async function proposeRemoval(
   if (!keepers.some((keeper) => keeper.userId === input.keeperId)) {
     return { result: 'not-a-keeper' }
   }
+  if (!(await mantelIsOpen(db, input.mantelId))) return { result: 'closed' }
   const proposalId = crypto.randomUUID()
   await db.batch([
     db.insert(mantelProposals).values({
@@ -163,6 +165,7 @@ export async function voteForProposal(
     .onConflictDoNothing()
   await applyRemovalIfCarried(db, proposalId, now)
   await applyHandoverDateIfCarried(db, proposalId, now)
+  await applyCloseIfCarried(db, proposalId, keeperId, now)
   return 'voted'
 }
 
@@ -360,7 +363,7 @@ export async function proposalsOf(db: KeysDb, keeperId: string, mantelId: string
     const counted = votes.filter((vote) => keeperIds.includes(vote.userId))
     proposals.push({
       id: proposal.id,
-      kind: proposal.kind as 'add_keeper' | 'remove_keeper' | 'handover_date',
+      kind: proposal.kind as 'add_keeper' | 'remove_keeper' | 'handover_date' | 'close',
       handoverOn: proposal.handoverOn,
       // A keeper typed this address, so keepers may see it.
       email: proposal.subjectEmail,

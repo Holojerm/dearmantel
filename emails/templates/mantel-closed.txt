@@ -1,0 +1,9 @@
+{{mantelName}}'s mantel is closed
+
+Its keepers have closed {{mantelName}}'s mantel. You can no longer write to it.
+
+Letters you posted to it that had not arrived yet come back to you with your next post. The letters that already arrived stay on the mantel, with its keepers.
+
+See who you write with: {{url}}
+
+{{appUrl}}
