@@ -78,7 +78,7 @@ test('a letter: written, sealed, recalled, delivered, read and answered', async 
   await expect(ann.getByLabel('Your letter')).toHaveCount(0)
 
   // ── Before pickup it can be recalled, changed and sealed again ─────────────
-  await ann.goto('/desk', { waitUntil: 'networkidle' })
+  await open(ann, '/desk')
   await ann.getByRole('button', { name: 'Recall the letter to Bob Tester' }).click()
   await expect(ann.getByText(/^Draft, edited /)).toBeVisible()
   await ann.getByRole('link', { name: 'Continue' }).click()
@@ -93,7 +93,7 @@ test('a letter: written, sealed, recalled, delivered, read and answered', async 
   await expect(ann.getByText('No drafts.')).toBeVisible()
 
   // ── Nothing shows on Bob's mantel until his mail day comes round ───────────
-  await bob.goto('/mantel', { waitUntil: 'networkidle' })
+  await open(bob, '/mantel')
   await expect(bob.getByText('Nothing has arrived yet.')).toBeVisible()
   const session = (await (await bob.request.get('/api/_auth/session')).json()) as {
     user: { id: string }
@@ -104,7 +104,7 @@ test('a letter: written, sealed, recalled, delivered, read and answered', async 
       await ann.request.post('/api/dev/clock', {
         data: { action: 'mail-day', userId: session.user.id },
       })
-      await bob.goto('/mantel', { waitUntil: 'networkidle' })
+      await open(bob, '/mantel')
       if ((await bob.getByText('From Ann Tester').count()) > 0) break
     }
     await expect(bob.getByText('From Ann Tester')).toBeVisible()
@@ -126,7 +126,7 @@ test('a letter: written, sealed, recalled, delivered, read and answered', async 
     await bob.getByRole('button', { name: 'Seal the letter' }).click()
     await bob.getByRole('button', { name: 'Seal and post' }).click()
     await bob.waitForURL('**/desk')
-    await bob.goto('/mantel', { waitUntil: 'networkidle' })
+    await open(bob, '/mantel')
     await expect(bob.getByText('Unopened')).toHaveCount(0)
 
     // ── He keeps a copy: made on his device, readable without Dear Mantel ────
@@ -147,10 +147,10 @@ test('a letter: written, sealed, recalled, delivered, read and answered', async 
     expect(archive).toMatch(/photos\/001 \d{4}-\d{2}-\d{2} from Ann Tester\.jpg/)
 
     // ── Ann is told nothing: her desk has only what the postmark allows ──────
-    await ann.goto('/desk', { waitUntil: 'networkidle' })
+    await open(ann, '/desk')
     await expect(ann.getByText(/^(In transit, arrives|Postmarked) /)).toBeVisible()
     await expect(ann.getByRole('button', { name: /Recall/ })).toHaveCount(0)
-    await ann.goto('/mantel', { waitUntil: 'networkidle' })
+    await open(ann, '/mantel')
     await expect(ann.getByText('Nothing has arrived yet.')).toBeVisible()
   } finally {
     await ann.request.post('/api/dev/clock', { data: { action: 'reset' } })
@@ -366,7 +366,7 @@ test('news of a child: asked for, sent, read, and not answered', async ({ browse
       await ann.request.post('/api/dev/clock', {
         data: { action: 'mail-day', userId: session.user.id },
       })
-      await bob.goto('/mantel', { waitUntil: 'networkidle' })
+      await open(bob, '/mantel')
       if ((await bob.getByText('News of Leo').count()) > 0) break
     }
     await bob.getByRole('link', { name: /News of Leo/ }).click()

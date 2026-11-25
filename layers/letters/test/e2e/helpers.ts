@@ -4,12 +4,11 @@
 import type { Browser, Page } from '@playwright/test'
 
 import { uniqueEmail } from '../../../../test/e2e/fixtures'
+import { open, reload } from '../../../keys/test/e2e/navigation'
+
+export { hydrated, open, reload } from '../../../keys/test/e2e/navigation'
 
 const PASSWORD = 'invite-password-0001'
-
-export async function open(page: Page, path: string): Promise<void> {
-  await page.goto(path, { waitUntil: 'networkidle' })
-}
 
 /** The dev-only link the page shows when no mail provider is configured, as a local path. */
 export async function mailedLink(page: Page, name: string): Promise<string> {
@@ -93,7 +92,7 @@ export async function makePair(browser: Browser, baseURL: string): Promise<Pair>
   // lands on a sheet of paper addressed to Ann.
   await bob.waitForURL('**/write?to=*', { timeout: 15_000 })
   await open(bob, '/people')
-  await ann.reload({ waitUntil: 'networkidle' })
+  await reload(ann)
 
   return {
     ann,

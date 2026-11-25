@@ -6,12 +6,10 @@ import type { Browser, Page } from '@playwright/test'
 
 import { expect, test, uniqueEmail } from '../../../../test/e2e/fixtures'
 
+import { hydrated, open, reload } from './navigation'
+
 const FIRST = 'first-password-0001'
 const SECOND = 'second-password-0002'
-
-async function open(page: Page, path: string): Promise<void> {
-  await page.goto(path, { waitUntil: 'networkidle' })
-}
 
 /** The dev-only link the page shows when no mail provider is configured, as a local path. */
 async function mailedLink(page: Page, name: string): Promise<string> {
@@ -67,7 +65,7 @@ test('keys: sign-up, a second device, and recovery after a reset by email', asyn
   expect(await wrapKinds(page)).toBe('password recovery')
 
   // It is shown until confirmed, a reload included, and the app waits behind it.
-  await page.reload({ waitUntil: 'networkidle' })
+  await reload(page)
   await expect(page.getByTestId('recovery-code')).toHaveText(code)
   await page.goto('/dashboard')
   await page.waitForURL('**/welcome/recovery-code')
@@ -80,7 +78,7 @@ test('keys: sign-up, a second device, and recovery after a reset by email', asyn
   await page.getByRole('button', { name: 'Continue' }).click()
   // No city chosen yet, so the landing page leads to that next.
   await page.waitForURL((url) => url.pathname === '/welcome', { timeout: 15_000 })
-  await page.reload({ waitUntil: 'networkidle' })
+  await reload(page)
   await expect(page.getByTestId('recovery-code')).toHaveCount(0)
 
   // ── A second device opens the key with the password ────────────────────────
@@ -102,6 +100,7 @@ test('keys: sign-up, a second device, and recovery after a reset by email', asyn
 
   await third.goto('/settings/recovery-code')
   await third.waitForURL((url) => url.pathname === '/unlock', { timeout: 15_000 })
+  await hydrated(third)
   await third.getByLabel('Password').fill(SECOND)
   await third.getByRole('button', { name: 'Open with my password' }).click()
   await expect(third.getByText('Use your recovery code')).toBeVisible({ timeout: 30_000 })
@@ -116,7 +115,7 @@ test('keys: sign-up, a second device, and recovery after a reset by email', asyn
   await third.waitForURL((url) => url.pathname === '/settings/recovery-code', { timeout: 15_000 })
   await expect(newCodeButton(third)).toBeVisible()
   expect(await wrapKinds(third)).toBe('password recovery')
-  await third.reload({ waitUntil: 'networkidle' })
+  await reload(third)
   await expect(newCodeButton(third)).toBeVisible()
 
   const fourth = await device(browser, baseURL!)

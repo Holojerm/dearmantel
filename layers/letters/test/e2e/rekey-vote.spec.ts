@@ -4,7 +4,7 @@
 
 import { expect, test } from '../../../../test/e2e/fixtures'
 
-import { makePair, open } from './helpers'
+import { makePair, open, reload } from './helpers'
 
 test("the keepers agree to change a mantel's key, and the old one opens nothing", async ({
   browser,
@@ -38,7 +38,7 @@ test("the keepers agree to change a mantel's key, and the old one opens nothing"
   await open(bob, '/mantels')
   await bob.getByRole('button', { name: 'Accept' }).click()
   const spoken = (await bob.getByTestId('my-fingerprint').innerText()).trim()
-  await ann.reload({ waitUntil: 'networkidle' })
+  await reload(ann)
   await expect(ann.getByTestId('their-fingerprint')).toHaveText(spoken)
   await ann.getByRole('button', { name: 'They match. Give them the key' }).click()
   await expect(ann.getByTestId('their-fingerprint')).toHaveCount(0)
@@ -65,7 +65,7 @@ test("the keepers agree to change a mantel's key, and the old one opens nothing"
   expect(secondCode).not.toBe(firstCode)
   await bob.getByLabel('I have kept my recovery code somewhere safe').check()
   await bob.getByRole('button', { name: 'Continue' }).click()
-  await bob.reload({ waitUntil: 'networkidle' })
+  await reload(bob)
   await expect(heading).toHaveCount(0)
   await expect(bob.getByText("Change Leo's key", { exact: true })).toHaveCount(0)
 
