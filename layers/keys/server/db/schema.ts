@@ -145,7 +145,7 @@ export const mantelProposals = sqliteTable(
       .primaryKey()
       .$defaultFn(() => crypto.randomUUID()),
     mantelId: text('mantel_id').notNull(),
-    // 'add_keeper', 'remove_keeper', 'handover_date' or 'close'.
+    // 'add_keeper', 'remove_keeper', 'handover_date', 'close' or 'rekey'.
     kind: text('kind').notNull(),
     // For an addition: the address it was offered to, cleared once it is settled.
     subjectEmail: text('subject_email'),

@@ -4,7 +4,7 @@
 // lands only on a keeper's own row, and nobody but a keeper learns anything
 // about a mantel.
 
-import { and, eq, isNull } from 'drizzle-orm'
+import { and, eq, gte, isNull } from 'drizzle-orm'
 import * as tables from '@nuxthub/db/schema'
 
 import { FOUNDER_ROLE, isHandoverDay, type NewMantel } from '../../shared/utils/mantel-format'
@@ -130,8 +130,10 @@ export async function getMantel(db: KeysDb, userId: string, mantelId: string) {
     name: mantel.name,
     publicKey: mantel.publicKey,
     keyVersion: mantel.keyVersion,
-    /** A keeper has left and may still hold the key: it should be changed. */
+    /** A keeper has left, or the keepers agreed the key got out: it should be changed. */
     rekeyDue: Boolean(mantel.rekeyDueAt),
+    /** The keepers asked for the change by a vote, and nobody has left since. */
+    rekeyAsked: mantel.rekeyDueAt ? await rekeyWasAsked(db, mantelId, mantel.rekeyDueAt) : false,
     /** A child's mantel: the day it becomes the child's own. */
     handoverOn: mantel.handoverOn,
     recoveryProofHash: mantel.recoveryProofHash,
@@ -141,4 +143,27 @@ export async function getMantel(db: KeysDb, userId: string, mantelId: string) {
     /** After a re-key: the new key, for this keeper's browser to open and settle. */
     handover: previous && handover ? { previous, wrapped: handover } : null,
   }
+}
+
+/**
+ * Whether the re-key now due was asked for by the keepers' vote
+ * (rekey-vote.ts) rather than by someone leaving. A later departure moves
+ * `rekeyDueAt` past the vote, and the page then says someone left, which is
+ * the more pressing reason.
+ */
+async function rekeyWasAsked(db: KeysDb, mantelId: string, dueAt: Date) {
+  const { mantelProposals } = tables
+  const [asked] = await db
+    .select({ id: mantelProposals.id })
+    .from(mantelProposals)
+    .where(
+      and(
+        eq(mantelProposals.mantelId, mantelId),
+        eq(mantelProposals.kind, 'rekey'),
+        eq(mantelProposals.outcome, 'done'),
+        gte(mantelProposals.settledAt, dueAt),
+      ),
+    )
+    .limit(1)
+  return Boolean(asked)
 }

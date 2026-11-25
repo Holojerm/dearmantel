@@ -1,7 +1,8 @@
 // Changing a mantel's key after a keeper stops keeping it. Removing a keeper
 // deletes their wrapped copy here, but they may have kept the key itself; with
 // a copy of the database they could open the mantel's letters, sealed ones
-// included. A re-key makes that copy open nothing kept here.
+// included. A re-key makes that copy open nothing kept here. The keepers can
+// also ask for one by a vote, when they think the key got out (rekey-vote.ts).
 //
 // A keeper who remains does the work in their browser: a new key pair, a new
 // recovery code, and every letter key held for the mantel wrapped again to the
@@ -34,6 +35,7 @@ import { HANDOVER_SEPARATOR, KEEPER_WRAP_PATTERN } from '../../shared/utils/mant
 import { batchGuard, isGuardFailure, mantelKeyVersionIs } from './batch-guard'
 import type { KeysDb } from './keys'
 import { keepersOf } from './mantels'
+import { settleRekeyProposals } from './rekey-vote'
 
 const keeperWrap = z.string().regex(KEEPER_WRAP_PATTERN)
 
@@ -259,6 +261,7 @@ export async function rekeyStatements(
         updatedAt: now,
       })
       .where(eq(mantels.id, mantelId)),
+    settleRekeyProposals(db, mantelId, now),
   ]
   return { status: 'ready', statements }
 }

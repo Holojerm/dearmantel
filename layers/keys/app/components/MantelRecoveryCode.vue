@@ -106,8 +106,8 @@ async function replace() {
           <p class="text-sm text-muted">
             A new code does not change the key. If someone may already have used the old code, or
             may have the key itself, from a lost device that was signed in for instance, they can
-            still open what is kept here. Only changing the key stops that, and today a mantel's key
-            is changed only after someone stops keeping it.
+            still open what is kept here. Only changing the key stops that: see “If the key got out”
+            below.
           </p>
           <UAlert
             v-if="failure"

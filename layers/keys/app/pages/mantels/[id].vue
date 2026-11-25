@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // One kept mantel: who keeps it, and the proposals that would change that,
-// closing it among them.
+// closing it and changing its key among them.
 // Seating a new keeper happens here, in a keeper's browser, after the two
 // people have compared the new keeper's key by voice.
 import { KEEPER_ROLES, type KeeperRole } from '../../../shared/utils/mantel-format'
@@ -14,7 +14,7 @@ interface Keeper {
 }
 interface Proposal {
   id: string
-  kind: 'add_keeper' | 'remove_keeper' | 'handover_date' | 'close'
+  kind: 'add_keeper' | 'remove_keeper' | 'handover_date' | 'close' | 'rekey'
   handoverOn: string | null
   email: string | null
   subjectId: string | null
@@ -34,6 +34,8 @@ interface MantelView {
   publicKey: string
   keyVersion: number
   rekeyDue: boolean
+  /** The keepers voted for the change; nobody left. */
+  rekeyAsked: boolean
   /** Its keepers closed it: nobody writes to it, and its letters stay. */
   closedAt: string | null
   recoveryProofHash: string | null
@@ -170,6 +172,22 @@ const grant = (id: string) =>
   })
 
 const closing = computed(() => mantel.value?.proposals.some((p) => p.kind === 'close') ?? false)
+const changingKey = computed(() => mantel.value?.proposals.some((p) => p.kind === 'rekey') ?? false)
+
+// Once a key change is carried, here, the work is the card at the top of the
+// page: move there rather than leave the keeper at the button they pressed.
+async function toRekey() {
+  await nextTick()
+  document.getElementById('rekey-heading')?.focus()
+}
+async function keyChangeProposed(due: boolean) {
+  await load()
+  if (due) await toRekey()
+}
+async function agree(proposal: Proposal) {
+  await act(proposal.id, 'vote')
+  if (proposal.kind === 'rekey' && mantel.value?.rekeyDue) await toRekey()
+}
 
 const subject = (proposal: Proposal) => proposal.name ?? proposal.email ?? 'someone'
 const onDay = (on: string | null) =>
@@ -183,6 +201,7 @@ const onDay = (on: string | null) =>
     : ''
 function describe(proposal: Proposal): string {
   if (proposal.kind === 'close') return `Close ${mantel.value?.name ?? 'this'}'s mantel`
+  if (proposal.kind === 'rekey') return `Change ${mantel.value?.name ?? 'this'}'s key`
   if (proposal.kind === 'handover_date')
     return `Hand the mantel over on ${onDay(proposal.handoverOn)}`
   return proposal.kind === 'add_keeper'
@@ -238,7 +257,7 @@ useSeo({ title: 'A mantel you keep', description: 'Who keeps this mantel.', noin
         variant="subtle"
         icon="i-lucide-key-round"
         title="This mantel's key was changed"
-        description="Another keeper changed it after someone stopped keeping this mantel. You now hold the new key and need do nothing. The recovery code printed before no longer works: ask them for the new one."
+        description="Another keeper changed it. You now hold the new key and need do nothing. The recovery code printed before no longer works: ask them for the new one."
       />
       <UAlert
         v-if="codeReplacedAt && !keyChanged"
@@ -330,6 +349,13 @@ useSeo({ title: 'A mantel you keep', description: 'Who keeps this mantel.', noin
         :other-keepers="mantel.keepers.length - 1"
         @done="load"
       />
+      <!-- A keeper whose device cannot open the key can still ask the others. -->
+      <MantelChangeKey
+        v-if="!mantel.rekeyDue && !changingKey && (canOpen || mantel.keepers.length > 1)"
+        :mantel="mantel"
+        :keepers="mantel.keepers.length"
+        @done="keyChangeProposed"
+      />
 
       <section
         v-if="mantel.proposals.length"
@@ -366,7 +392,7 @@ useSeo({ title: 'A mantel you keep', description: 'Who keeps this mantel.', noin
                 size="sm"
                 :disabled="busy"
                 :aria-label="`Agree: ${describe(proposal)}`"
-                @click="act(proposal.id, 'vote')"
+                @click="agree(proposal)"
               >
                 Agree
               </UButton>
