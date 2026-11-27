@@ -5,12 +5,12 @@ import { wwwRedirect } from '../../shared/utils/canonical-host'
 
 export default defineEventHandler((event) => {
   const host = getRequestHost(event)
-  if (!host.startsWith('www.')) return
+  if (!host.startsWith('www.')) return undefined
   const url = getRequestURL(event)
   const target = wwwRedirect(
     host,
     useRuntimeConfig(event).public.appUrl,
     `${url.pathname}${url.search}`,
   )
-  if (target) return sendRedirect(event, target, 301)
+  return target ? sendRedirect(event, target, 301) : undefined
 })

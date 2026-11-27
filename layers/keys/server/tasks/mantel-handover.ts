@@ -33,7 +33,11 @@ export default defineTask({
           invited += 1
         }
         if (due.tellKeepers) {
-          await mailHandoverDue(db, due)
+          await mailHandoverDue(db, {
+            keeperIds: due.keeperIds,
+            mantelId: due.mantelId,
+            mantelName: due.name,
+          })
           await markHandoverSent(db, due.mantelId, { keepersTold: true }, now)
         }
       } catch (error) {
