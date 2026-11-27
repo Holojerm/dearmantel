@@ -15,6 +15,8 @@ import type { Result } from 'axe-core'
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
 
+import { APP_PAGE_COLLECTIONS } from '../../server/utils/page-collections-app'
+import { collectionPrefix } from '../../shared/utils/page-collections'
 import { hasLayer, hasPage } from '../lib/layers'
 
 // Public routes only. /dashboard and /account redirect to /login when signed
@@ -47,6 +49,8 @@ const ROUTES = [
     ? ['/auth/sign-in', '/auth/sign-up', '/auth/verify-email', '/auth/reset']
     : []),
   '/unsubscribe',
+  // Scanned with no parameters, like /unsubscribe: the cut-link state.
+  '/updates/confirm',
   '/terms',
   '/privacy',
   // The explainer pages (layers/how).
@@ -60,6 +64,9 @@ const ROUTES = [
   '/how/keys',
   '/how/joining',
 ]
+
+/** Where each page collection's generated pages live: `/glossary/`. */
+const COLLECTION_PREFIXES = APP_PAGE_COLLECTIONS.map(collectionPrefix)
 
 const WCAG_TAGS = [
   'wcag2a',
@@ -234,7 +241,23 @@ test('sitemap coverage: every public page is in ROUTES', async ({ request }) => 
 
   expect(paths.length).toBeGreaterThan(0)
 
-  const missing = paths.filter((path) => !ROUTES.includes(path))
+  // Generated pages (page collections) are exempt from the sitemap→ROUTES
+  // direction: every row renders through one page file. Each collection with
+  // pages in the sitemap must still have one of them scanned, and that one
+  // must be live.
+  for (const prefix of COLLECTION_PREFIXES) {
+    const published = paths.filter((path) => path.startsWith(prefix))
+    if (published.length === 0) continue
+    expect(
+      ROUTES.filter((route) => published.includes(route)),
+      `ROUTES must scan one published page under ${prefix} — it stands in for the rest.`,
+    ).not.toEqual([])
+  }
+
+  const missing = paths.filter(
+    (path) =>
+      !ROUTES.includes(path) && !COLLECTION_PREFIXES.some((prefix) => path.startsWith(prefix)),
+  )
   expect(
     missing,
     `Public pages missing from the a11y sweep: ${missing.join(', ')}. ` +

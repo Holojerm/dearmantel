@@ -42,11 +42,6 @@ export function composeEmail(
   }
 }
 
-/** First sign-in. Short on purpose — nobody reads a welcome tour. */
-export function welcomeEmail(brand: Branding, opts: { name: string }): EmailContent {
-  return composeEmail('welcome', `Welcome to ${brand.appName}`, brand, { name: opts.name })
-}
-
 /**
  * A human reply to something someone sent through the feedback widget.
  *

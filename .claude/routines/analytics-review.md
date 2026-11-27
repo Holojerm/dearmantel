@@ -1,7 +1,7 @@
 ---
 schedule: "30 12 * * 1"
-model: claude-sonnet-5
-connectors: [github, cloudflare]
+model: sonnet
+connectors: [github]
 enabled: false
 ---
 
@@ -33,6 +33,12 @@ a report the owner can read in two minutes and issues the backlog can act on.
      Query it per `_shared.md` › Reading production D1, and prefer it over PostHog's
      `$initial_utm_*` when the two disagree: ad blockers make the PostHog figure a
      non-random undercount.
+   - **Channel bets.** For every open `growth-bet` issue of type `channel`, report two counts
+     since its first publication: visits (distinct visitors with a `$pageview` carrying the
+     bet's `utm_campaign`, or for a search page, sessions that began on its landing path)
+     and signups (`users.signup_campaign`, or `users.signup_landing`). `growth-review` judges
+     the bet on these and does not recompute them. With no visit source, write "visits: not
+     measured" rather than a zero.
    - **Churn reasons.** `feedback` rows with `kind = 'churn'`, written by the cancellation
      prompt on /account. Small numbers, high signal — quote them verbatim rather than
      summarising, and never average them into a sentiment score.
@@ -45,9 +51,14 @@ a report the owner can read in two minutes and issues the backlog can act on.
    - **Recommended actions** — each one concrete enough to become an issue.
 4. File a GitHub issue for each recommended action worth doing (label `enhancement` or `bug`,
    plus `from-analytics`), linking the report. Skip actions already tracked by an open issue.
+   An action meant to grow the product (a source to try, a page to write, a funnel step to
+   fix) is a growth idea instead, labelled `growth-idea` and `from-analytics`
+   (`_shared.md` › Growth ideas). Too few signups for an experiment is not a reason to
+   recommend nothing: look for channel ideas (a source never tried, a page that is found but
+   linked from nowhere, a directory the product is missing from).
 5. **Experiments: propose, never run.** Where a recommendation is a genuine coin-flip —
    pricing layout, onboarding order, copy on the paid CTA — write it up as an experiment
-   proposal in the report and file it as an issue labelled `experiment`: the hypothesis, the
+   proposal in the report and file it as a growth idea: the hypothesis, the
    flag name it would use (`useFlag()` / `useFlagVariant()`, app/composables/useFlag.ts), the
    single metric that decides it, and the minimum run length. Do **not** create the PostHog
    flag, change its rollout, or alter targeting. A routine that can start experiments can

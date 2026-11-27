@@ -1,7 +1,8 @@
 ---
-schedule: "30 11 * * *"
-model: claude-sonnet-5
-connectors: [github, cloudflare]
+fire: fleet # fires the API trigger when /api/fleet's open feedback count rises
+schedule: "30 11 * * 1" # weekly backstop
+model: sonnet
+connectors: [github]
 enabled: false
 ---
 

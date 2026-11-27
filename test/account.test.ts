@@ -37,6 +37,7 @@ beforeEach(async () => {
     signupMedium: 'social',
     signupCampaign: 'launch',
     signupReferrer: 'https://twitter.com',
+    signupLanding: '/pricing',
   })
 })
 
@@ -58,6 +59,7 @@ describe('deleteAccount', () => {
     expect(row?.signupMedium).toBeNull()
     expect(row?.signupCampaign).toBeNull()
     expect(row?.signupReferrer).toBeNull()
+    expect(row?.signupLanding).toBeNull()
   })
 
   it('hard-deletes notification preferences', async () => {

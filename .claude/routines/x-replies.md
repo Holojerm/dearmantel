@@ -1,6 +1,8 @@
 ---
 schedule: "0 9,17 * * *"
-model: claude-sonnet-5
+gate: |
+  Run `rm -f /tmp/xr.json; git fetch -q origin ops-journal && git show origin/ops-journal:ops/marketing/x/replies/state.json > /tmp/xr.json 2>/dev/null || rm -f /tmp/xr.json; bun run scripts/x-replies.ts list --max 3 --dry-run --state /tmp/xr.json | bun -e 'const o = await Bun.stdin.json(); if (o.items.length) console.log(o.items.length)'`. Empty output means nothing to do.
+model: sonnet
 connectors: [github]
 enabled: false
 tier: 3
@@ -43,7 +45,10 @@ drafts or posts at most a few replies. It never starts a conversation: `x-post` 
    - Facts only from this repo or the product's public pages. If you would have to guess,
      skip the item. No invented numbers, roadmap or promises.
    - No link unless they asked where to find something (the script refuses links without
-     `--allow-link`, and a post with a URL costs far more). No hashtags, no @mentions of anyone
+     `--allow-link`, and a post with a URL costs far more). A link to the product is tagged
+     per `_shared.md` › Tagged links:
+     `?utm_source=x&utm_medium=social&utm_campaign=x-replies`. A reply never carries a bet's
+     campaign: it answers one person and is not a publication a bet planned. No hashtags, no @mentions of anyone
      but the author, no sales pitch, no "great question", no thanks-for-the-feedback filler.
    - Never argue, correct someone's tone, or reply a second time in a thread. If someone
      answers one of our replies, that branch is finished.

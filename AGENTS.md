@@ -612,6 +612,8 @@ bun run brand:check   # Fail when those generated files no longer match the mark
 bun run seo:check     # Fail on pages that bypass useSeo() or aren't declared public/noindex
 bun run fleet:check   # Fail when fleet.json stops matching wrangler.toml (names, binding ids, crons)
 bun run crons:check   # Fail when [triggers] crons and nitro.scheduledTasks disagree, or a task has no file
+bun run routines:check # Fail when a routine pins a model ID instead of a tier, or .claude/routines/models.json is malformed
+bun run routines:models # Compare models.json with the newest model per tier (frontier-terminal's catalog); --write moves them
 bun run methods:check # Fail when a get/head/delete server route reads a request body (hangs on Workers)
 bun run mcp:check     # The template's MCP listing gate. This app has no mcp/ worker, so it passes with nothing to check
 bun run test:a11y     # Playwright/Chromium browser suites: axe over every public route
@@ -627,7 +629,7 @@ bun seed              # Seed dev DB via bun:sqlite (writes to .data/db/sqlite.db
 bun run rename <name> # Rewrite the `my-app` placeholder across wrangler.toml, package.json,
                       # .mcp.json.example and fleet.json — every occurrence, in one go
 bun run ci            # Every gate, concurrently (scripts/ci.ts): format (writes; checks in CI), email:build, lint,
-                      # design/brand/seo/fleet/crons/methods/mcp, migrations:check (schema.ts vs migrations, expand-only),
+                      # design/brand/seo/fleet/crons/routines/methods/mcp, migrations:check (schema.ts vs migrations, expand-only),
                       # typecheck, test, build. Workers Builds runs this on non-production branches (the PR
                       # gate; production builds run typecheck + build only). NO browser suites: that image cannot
                       # launch Chromium (see Gotchas). CI_SERIAL=1 runs the gates one at a time.
@@ -670,8 +672,25 @@ When I ask you to build features in this project:
 
 ## Agent tooling
 
-MCP servers, the NuxtUI skill, slash commands, and the cloud operations routines are
+MCP servers, skills, slash commands, and the cloud operations routines are
 documented in [`.claude/docs/agent-setup.md`](.claude/docs/agent-setup.md).
+
+**Skills: load the named one (Skill tool) at its moment**, before writing. `DESIGN.md` is the
+brief and wins over every design skill, and this file wins over all of them.
+
+| Moment | Load |
+| --- | --- |
+| Building or changing a page or component | `nuxt-ui`; plus `frontend-design` for a new page or a redesign |
+| A form, wizard or other multi-step flow | `state-machine` |
+| A view that fetches, submits or saves | `loading-states`, `error-handling-ux`, `feedback-patterns` |
+| Interface copy (labels, errors, empty states) | `ux-writing` |
+| Landing, pricing or marketing copy | `copywriting` |
+| A new public content page, or an SEO fix | `seo-audit` |
+| Writing or reviewing `server/` code or `wrangler.toml` | `workers-best-practices` |
+| A bug or failing test, before proposing a fix | `systematic-debugging` |
+| Before calling UI work done | `design-qa-checklist`, then `web-design-guidelines` on the changed files |
+| Proposing or judging a growth bet | `a-b-test-design` (the `growth-review` routine's thresholds win) |
+| Writing or fixing a browser test | no skill yet: follow `test/a11y/accessibility.spec.ts` and run `bun run test:a11y` |
 
 Parallel agent worktrees under `.claude/worktrees/<name>` are supported and every gate in
 `bun run ci` is scoped to its own checkout. The rules that keep it that way — and the three
