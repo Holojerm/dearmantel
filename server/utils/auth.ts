@@ -10,6 +10,7 @@ import type { Attribution } from '#shared/utils/attribution'
 import { ATTRIBUTION_COOKIE, readAttributionCookie } from '#shared/utils/attribution'
 import { safeRedirectPath } from '#shared/utils/redirect'
 import { getSignupContributors } from './signup-contributors'
+import { signInOAuthUser } from './oauth-sign-in'
 import type { OAuthProfile } from './users'
 import { logEvent } from './log'
 
@@ -62,7 +63,7 @@ export const SESSION_PAYLOAD_KEYS = ['user', 'issuedAt'] as const
  * it fail the sign-in. Once `replaceUserSession` has run the user IS signed in,
  * but the caller is still inside `completeOAuthSignIn`'s try/catch, which turns
  * a throw into `sign_in_failed`; on magic-link the token is already spent. Even
- * the welcome email can throw around `sendEmail` (`isNotificationEnabled` is a
+ * a welcome email can throw around `sendEmail` (`isNotificationEnabled` is a
  * D1 read, `buildUnsubscribeUrl` throws on a missing session password). Put
  * anything added to that tail inside this.
  */
@@ -108,20 +109,6 @@ export async function establishSession(
   event: H3Event,
   { profile, emailVerified, attribution: providedAttribution }: EstablishSessionOptions,
 ) {
-  if (!profile.email) {
-    logEvent('warn', 'auth_no_email', { provider: profile.provider })
-    throw createError({ statusCode: 401, message: 'No email address', data: { code: 'no_email' } })
-  }
-
-  if (!emailVerified) {
-    logEvent('warn', 'auth_unverified_email', { provider: profile.provider })
-    throw createError({
-      statusCode: 401,
-      message: 'Email not verified',
-      data: { code: 'unverified_email' },
-    })
-  }
-
   // The `attr` cookie is untrusted but parsed through a strict, length-capped
   // schema (null otherwise), so a forged one dirties one row's marketing
   // columns. Read ONLY when the caller did not decide: no merging, because
@@ -133,7 +120,18 @@ export async function establishSession(
       ? providedAttribution
       : readAttributionCookie(getCookie(event, ATTRIBUTION_COOKIE))
 
-  const { user, created } = await upsertOAuthUser(db, profile, attribution)
+  // Identity first, then verified email (server/utils/oauth-sign-in.ts). With no
+  // `subject` (magic link, credentials) this is the verified-email path alone.
+  const outcome = await signInOAuthUser(db, { profile, emailVerified, attribution })
+  if ('refused' in outcome) {
+    logEvent('warn', `auth_${outcome.refused}`, { provider: profile.provider })
+    throw createError({
+      statusCode: 401,
+      message: outcome.refused === 'no_email' ? 'No email address' : 'Email not verified',
+      data: { code: outcome.refused },
+    })
+  }
+  const { user, created } = outcome
 
   // Consumed: clear it so a stale channel does not reach the next account from this browser.
   if (created && attribution) deleteCookie(event, ATTRIBUTION_COOKIE, { path: '/' })
@@ -141,7 +139,7 @@ export async function establishSession(
   // `replaceUserSession` drops every key of the previous session before writing.
   // It did not before nuxt-auth-utils 0.6 (it shallow-merged over the request
   // cookie), so the payload still writes every top-level key of `UserSession`
-  // (app/types/auth.d.ts): buildSessionPayload() and
+  // (shared/types/auth.d.ts): buildSessionPayload() and
   // test/session-payload.test.ts keep that checkable, whatever the module does.
   // Never `setUserSession`, which deep-merges via defu and skips nulls, so a
   // null avatarUrl would inherit the previous account's picture.
@@ -163,30 +161,9 @@ export async function establishSession(
     },
   })
 
-  // Nothing past the session write may fail the sign-in (see afterSignIn).
-  if (created) {
-    await afterSignIn('welcome_email', async () => {
-      // Always true for a brand-new user; kept so the next optional email added here wires the same check.
-      if (await isNotificationEnabled(db, user.id, 'welcome')) {
-        const config = useRuntimeConfig(event)
-        const unsubscribeUrl = await buildUnsubscribeUrl(
-          config.sessionPassword,
-          config.public.appUrl,
-          user.id,
-          'welcome',
-        )
-        // Awaited: Workers can tear down the isolate once the response is sent.
-        await sendEmail({
-          to: user.email,
-          ...welcomeEmail(emailBranding(), { name: user.name }),
-          unsubscribe: { eventType: 'welcome', url: unsubscribeUrl },
-        })
-      }
-    })
-  }
-
   // What features add to a new account (server/utils/signup-contributors.ts), each
-  // inside afterSignIn for the reason that helper exists.
+  // inside afterSignIn: nothing past the session write may fail the sign-in. The
+  // welcome email is one of them, registered by server/plugins/lifecycle.ts.
   if (created) {
     for (const contributor of getSignupContributors()) {
       const afterSignUp = contributor.afterSignUp

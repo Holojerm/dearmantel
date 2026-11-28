@@ -20,6 +20,8 @@
 
 import { z } from 'zod'
 
+import { LANDING_MAX, LANDING_PATTERN, landingPath } from './landing-path'
+
 /** Cookie name. Short — it rides on every request to this origin. */
 export const ATTRIBUTION_COOKIE = 'attr'
 
@@ -42,6 +44,11 @@ export const attributionSchema = z.object({
   medium: z.string().max(SHORT_MAX).optional().catch(undefined),
   campaign: z.string().max(SHORT_MAX).optional().catch(undefined),
   referrer: z.string().max(REFERRER_MAX).optional().catch(undefined),
+  /**
+   * The path of the first page seen, as landingPath() writes it. Pinned to that
+   * shape because it is reported, grouped, on /api/fleet.
+   */
+  landing: z.string().max(LANDING_MAX).regex(LANDING_PATTERN).optional().catch(undefined),
 })
 
 export type Attribution = z.infer<typeof attributionSchema>
@@ -120,6 +127,7 @@ export function parseAttribution({ url, referrer, origin }: ParseAttributionInpu
   const utmSource = clean(params.get('utm_source'))
   const utmMedium = clean(params.get('utm_medium'))
   const campaign = clean(params.get('utm_campaign'))
+  const landing = landingPath(url)
 
   // A referrer on our own origin means an internal navigation, not an arrival.
   let referrerHost: string | undefined
@@ -143,6 +151,7 @@ export function parseAttribution({ url, referrer, origin }: ParseAttributionInpu
       medium: utmMedium ?? 'unknown',
       campaign,
       referrer: referrerUrl,
+      landing,
     }
   }
 
@@ -155,15 +164,15 @@ export function parseAttribution({ url, referrer, origin }: ParseAttributionInpu
         ? 'bing'
         : undefined
   if (paidClick) {
-    return { source: paidClick, medium: 'paid', campaign, referrer: referrerUrl }
+    return { source: paidClick, medium: 'paid', campaign, referrer: referrerUrl, landing }
   }
 
   if (referrerHost) {
     const { source, medium } = classifyReferrer(referrerHost)
-    return { source, medium, campaign, referrer: referrerUrl }
+    return { source, medium, campaign, referrer: referrerUrl, landing }
   }
 
-  return { source: 'direct', medium: 'none', campaign, referrer: undefined }
+  return { source: 'direct', medium: 'none', campaign, referrer: undefined, landing }
 }
 
 /**
@@ -180,8 +189,8 @@ export function readAttributionCookie(raw: string | undefined): Attribution | nu
   }
   const parsed = attributionSchema.safeParse(candidate)
   if (!parsed.success) return null
-  const { source, medium, campaign, referrer } = parsed.data
-  if (!source && !medium && !campaign && !referrer) return null
+  const { source, medium, campaign, referrer, landing } = parsed.data
+  if (!source && !medium && !campaign && !referrer && !landing) return null
   return parsed.data
 }
 
