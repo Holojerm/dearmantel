@@ -1,7 +1,7 @@
 # Wrangler config for Cloudflare Workers
-# CI/CD runs on Workers Builds (Cloudflare-native): pushes to main build & deploy
-# automatically once the repo is connected in the dashboard (Worker → Settings → Build).
-# The Worker name in the dashboard MUST match `name` below or builds fail.
+# CI/CD runs on GitHub Actions (.github/workflows/deploy.yml): `gate` on every pull
+# request, build and deploy on every push to main. Workers Builds cannot reach the
+# Holojerm LLC account this Worker lives in.
 # Manual deploys: `bun run deploy` (nuxt build && wrangler --cwd .output deploy),
 # which requires `wrangler login` OR CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID env vars.
 #
@@ -15,13 +15,15 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 name = "dearmantel"
-# Pinned: the owner's login sees more than one Cloudflare account, and
-# non-interactive wrangler cannot choose between them.
-account_id = "90394168655e3aff5b5f299c4a213f54"
+# The "Holojerm LLC" account. Pinned: the owner's login sees more than one
+# Cloudflare account, and non-interactive wrangler cannot choose between them.
+account_id = "02b5bde905578525005534de7fdfe3c8"
 compatibility_date = "2025-09-01"
 # Off: the app answers on its own domain only. Two addresses would mean two
 # sets of sessions, and a passkey made on one does not work on the other.
 workers_dev = false
+# Off too: a config that leaves it out turns preview URLs on at the first deploy.
+preview_urls = false
 # `queue_consumer_wait_for_wait_until` is not decoration — it PINS today's
 # default, and the email consumer's correctness rests on it.
 #
@@ -42,12 +44,12 @@ compatibility_flags = ["nodejs_compat", "queue_consumer_wait_for_wait_until"]
 [[d1_databases]]
 binding = "DB"
 database_name = "dearmantel-db"
-database_id = "2849245e-64da-46a3-b2cd-659db234d10f"
+database_id = "c3fb5713-e6d6-425f-86cf-3a343f275234"
 migrations_dir = "./server/db/migrations"
 
 [[kv_namespaces]]
 binding = "KV"
-id = "d3c08c2747884a2b8d0b85697c02c41a"
+id = "f0060972015f403fbb38db1b16e25088"
 
 [[r2_buckets]]
 binding = "BLOB"
@@ -225,7 +227,7 @@ NUXT_WEBAUTHN_RELATED_ORIGINS = "https://norandeltracker.com"
 # verifies, and server/utils/turnstile.ts logs `turnstile_half_configured`.
 # To try it locally, Cloudflare's always-passes test pair is site key
 # 1x00000000000000000000AA and secret 1x0000000000000000000000000000000AA.
-NUXT_PUBLIC_TURNSTILE_SITE_KEY = "0x4AAAAAAGElO5nio-ZGQKJ5"
+NUXT_PUBLIC_TURNSTILE_SITE_KEY = "0x4AAAAAAGXNJ-MQXUBuEd4x"
 # PostHog project token — public by design; it ships in the client bundle and
 # authorises nothing but ingestion. Events travel through the app's own
 # /ingest reverse proxy, so no *.posthog.com origin is added to the CSP.
@@ -344,7 +346,7 @@ NUXT_EMAIL_QUEUE_NAME = "dearmantel-email-preview"
 # per-version URL that this cannot know in advance; this value is what emails,
 # canonical tags and sitemap entries are built from, so pointing it at the
 # stable preview origin keeps them from claiming to be production.
-NUXT_PUBLIC_APP_URL = "https://dearmantel-preview.jeremy-ettlinger.workers.dev"
+NUXT_PUBLIC_APP_URL = "https://dearmantel-preview.odd-dust-a85c.workers.dev"
 NUXT_PUBLIC_SUPPORT_EMAIL = "support@dearmantel.com"
 NUXT_PUBLIC_LEGAL_ENTITY = "Holojerm LLC"
 # Empty: preview's passkeys belong to its own workers.dev host, and it lends

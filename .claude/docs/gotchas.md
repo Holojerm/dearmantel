@@ -47,7 +47,7 @@ The `.sql` files are copied into `.output/server/db/migrations/` and the generat
 So a deploy that adds a table ships a Worker querying a table that does not exist, and the
 failure surfaces as a 500 on a route that worked perfectly in dev.
 
-**Workers Builds closes that gap with its deploy command, `bun run deploy:ci`.** It runs
+**`deploy.yml` closes that gap on `main` with the deploy command, `bun run deploy:ci`.** It runs
 `deploy:secrets` (holds the deploy while the Worker lacks a secret `fleet.json` › `secrets`
 names), `db:migrate:remote`, then `wrangler --cwd .output deploy`, so the schema lands before the
 code that needs it, then `deploy:smoke`, which fails the build if `/` or `/api/health` is not
@@ -55,8 +55,8 @@ serving 90 s later (the new version is already live; the red build is the alert)
 gate, `migrations:check` fails when `schema.ts` has changes no migration records, or when a new
 migration drops or renames (unless it says `-- destructive-ok: <why>`). Three consequences:
 
-- The build token needs **D1 Edit**. The token Workers Builds generates has only Workers
-  Scripts, KV, R2 and Routes permissions. Without D1 Edit the migrate step fails and the
+- The deploy token (the `production` environment's `CLOUDFLARE_API_TOKEN`) needs **D1 Edit**
+  beside Workers Scripts and Routes. Without D1 Edit the migrate step fails and the
   deploy never runs. The app keeps serving the previous build, and the fork's ops alerts or
   the fleet dashboard's `deploy_stale` report it.
 - Migrations must be **expand-only**: add tables and nullable or defaulted columns. The
