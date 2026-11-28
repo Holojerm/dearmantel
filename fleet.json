@@ -6,12 +6,12 @@
   "urls": { "prod": "https://dearmantel.com" },
   "workers": ["dearmantel"],
   "bindings": {
-    "d1": [{ "name": "dearmantel-db", "id": "2849245e-64da-46a3-b2cd-659db234d10f" }],
-    "kv": ["d3c08c2747884a2b8d0b85697c02c41a"],
+    "d1": [{ "name": "dearmantel-db", "id": "c3fb5713-e6d6-425f-86cf-3a343f275234" }],
+    "kv": ["f0060972015f403fbb38db1b16e25088"],
     "r2": ["dearmantel-blob"]
   },
   "crons": ["0 4 * * *", "*/15 * * * *"],
-  "deploy": "workers-builds",
+  "deploy": "github-actions",
   "template": {
     "repo": "Holojerm/nuxt-cf-template",
     "syncedSha": "d2f12601275e03a40f792a310c343432b82ee47d",

@@ -398,7 +398,7 @@ Read the row that matches what you are about to touch. Do not load them all.
 
 **Three gotchas are load-bearing enough to state here**, because each one fails with
 no error at all: local D1 lives in two places and only `.data/db/sqlite.db` is real;
-**production D1 is migrated only by the Workers Builds deploy command `bun run deploy:ci`**
+**production D1 is migrated only by the deploy command `bun run deploy:ci`** (run by `deploy.yml` on `main`)
 (migrate, then deploy; a manual `bun run deploy` still skips it, so run
 `bun run db:migrate:remote` after one); and `bun dev` caches its DB connection, so an external write needs a
 restart. The rest are in [`.claude/docs/gotchas.md`](.claude/docs/gotchas.md).
@@ -418,10 +418,19 @@ restart. The rest are in [`.claude/docs/gotchas.md`](.claude/docs/gotchas.md).
 | File Storage | **Cloudflare R2**          | `BLOB` binding (browser-encrypted blobs; storage code comes later) |
 | Auth         | **nuxt-auth-utils**        | Sealed cookie sessions, OAuth                                    |
 | Deployment   | **Wrangler**               | `bun run deploy` → `wrangler deploy` (NuxtHub Admin sunset Feb 2026) |
-| CI/CD        | **Workers Builds**         | Cloudflare-native CI: `bun run ci` on PR branches, typecheck + build + deploy on `main` (see README) |
+| CI/CD        | **GitHub Actions (mini)**  | `.github/workflows/deploy.yml`: `gate` runs `bun run ci` on every PR; on `main`, typecheck + build, then `bun run deploy:ci`. Browser suites run in `browser-suites.yml` |
 | Linting      | **oxlint**                 | Fast Rust-based linter, config in `.oxlintrc.json`               |
 | Formatting   | **oxfmt**                  | Fast Rust-based formatter, config in `.oxfmtrc.json`             |
 | Validation   | **Zod**                    | All user input + API I/O                                         |
+
+**Cloudflare account.** The Worker, D1, KV, R2, the email queues, the Turnstile widget, the
+dearmantel.com zone (`4fe31632a903335169fa20c9dff98e60`, Email Routing for support@) and its
+registration live in the "Holojerm LLC" account, the `account_id` in `wrangler.toml` (moved from
+the owner's personal account on 2026-11-28). The owner's login sees both accounts: `cf` needs
+`CLOUDFLARE_ACCOUNT_ID` set to that id, and takes the zone id rather than `-z dearmantel.com`.
+Workers Builds cannot deploy there (Cloudflare ties the GitHub app installation to the personal
+account), so `.github/workflows/deploy.yml` runs the PR gate and deploys on every merge to
+`main`, on the mini's runner, with the Holojerm LLC token in the `production` environment.
 
 ---
 
@@ -460,8 +469,8 @@ restart. The rest are in [`.claude/docs/gotchas.md`](.claude/docs/gotchas.md).
 │                           # server/utils/extensions.ts (and its sibling seams), never
 │                           # imports another layer, and reads like its own small app
 ├── public/                 # Static assets — og.png, favicon.svg, apple-touch-icon.png
-├── .github/                # Dependabot + browser-suites.yml (PR checks: ci, axe/CSP/E2E — the browser half is the only CI
-│                           # not in Workers Builds; that image can't launch Chromium)
+├── .github/                # Dependabot, deploy.yml (PR gate + deploys), browser-suites.yml (axe/CSP/E2E),
+│                           # pick-runner.yml
 ├── fleet.json              # How this app describes itself to the portfolio dashboard — see bun run fleet:check
 ├── drizzle.config.ts       # Drizzle Kit config
 ├── nuxt.config.ts
@@ -585,11 +594,11 @@ Each of these has a full contract in its own doc — this is the one-line versio
 
 ## Git Workflow
 
-- **`main`** — production branch, auto-deploys via Cloudflare Workers Builds
+- **`main`** — production branch, auto-deploys via `.github/workflows/deploy.yml`
 - **`dev`** — integration branch (optional for larger features)
 - **Feature branches**: `feat/workout-builder`, `fix/auth-redirect`, `chore/update-deps`
 - **Commit format**: `feat: add workout builder`, `fix: correct auth redirect`, `chore: update deps`
-- **PRs require**: the `ci` and `browser-suites` jobs in `.github/workflows/browser-suites.yml`, enforced by the "main: merge when green" ruleset. Open the PR and stop: Mergify queues it once its own checks pass (again after any push) and merges it once they pass on top of main. Open it as a draft to hold it. Never arm `gh pr merge --auto` or run `gh pr update-branch`: a merge outside the queue resets every speculative check in it
+- **PRs require**: `gate` (`.github/workflows/deploy.yml`) and `browser-suites` (`.github/workflows/browser-suites.yml`), enforced by the "main: merge when green" ruleset. Open the PR and stop: Mergify queues it once its own checks pass (again after any push) and merges it once they pass on top of main. Open it as a draft to hold it. Never arm `gh pr merge --auto` or run `gh pr update-branch`: a merge outside the queue resets every speculative check in it
 
 ---
 
@@ -630,13 +639,13 @@ bun run rename <name> # Rewrite the `my-app` placeholder across wrangler.toml, p
                       # .mcp.json.example and fleet.json — every occurrence, in one go
 bun run ci            # Every gate, concurrently (scripts/ci.ts): format (writes; checks in CI), email:build, lint,
                       # design/brand/seo/fleet/crons/routines/methods/mcp, migrations:check (schema.ts vs migrations, expand-only),
-                      # typecheck, test, build. Workers Builds runs this on non-production branches (the PR
-                      # gate; production builds run typecheck + build only). NO browser suites: that image cannot
-                      # launch Chromium (see Gotchas). CI_SERIAL=1 runs the gates one at a time.
+                      # typecheck, test, build. deploy.yml's `gate` runs this on every PR (production
+                      # builds run typecheck + build only). NO browser suites here (see Gotchas).
+                      # CI_SERIAL=1 runs the gates one at a time.
 bun run ci:fast       # While iterating: format (writes), the cheap gates + typecheck + tests touched since origin/main, no build
 bun run ci:browser    # playwright:install + test:a11y — what GitHub Actions runs
 bun run deploy        # Manual deploy to Cloudflare via wrangler (normally unnecessary —
-                      # Workers Builds deploys automatically on push to main).
+                      # deploy.yml deploys automatically on push to main).
                       # Requires CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID env vars
 ```
 
@@ -648,7 +657,7 @@ merge, and again after any change you think is trivial. It runs every gate even 
 and prints only the failures, so fix them all in one pass. If it fails, fix the failure; do not
 work around it. Both modes run the formatter in write mode, so formatting never fails a local
 run; commit what it rewrote. In CI (`CI` set) it runs `format:check` instead, so an unformatted
-commit fails the Workers Builds check.
+commit fails the `gate` check.
 
 ---
 
