@@ -137,6 +137,7 @@ export async function createMagicLinkToken(
         signupMedium: input.attribution?.medium ?? null,
         signupCampaign: input.attribution?.campaign ?? null,
         signupReferrer: input.attribution?.referrer ?? null,
+        signupLanding: input.attribution?.landing ?? null,
       })
       .returning(),
     db
@@ -239,6 +240,7 @@ export function attributionFromRecord(record: MagicLinkToken): Attribution | und
     medium: record.signupMedium ?? undefined,
     campaign: record.signupCampaign ?? undefined,
     referrer: record.signupReferrer ?? undefined,
+    landing: record.signupLanding ?? undefined,
   }
   const known = Object.values(attribution).some((value) => value !== undefined)
   return known ? attribution : undefined

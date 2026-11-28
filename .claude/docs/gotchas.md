@@ -15,7 +15,7 @@ NuxtHub serves the dev DB from `.data/db/sqlite.db`. Wrangler's own local D1 san
 
 ## A fresh dev database got its migrations in directory order — patched
 
-NuxtHub (0.10.8, and `main` upstream as of 2026-11) applies dev migrations in whatever order
+NuxtHub (0.10.8 to 0.10.12, and `main` upstream as of 2026-11) applies dev migrations in whatever order
 the filesystem lists `.data/db/migrations/`, unsorted. A dev database that has been running for
 a while never notices: each new migration arrives alone. A fresh one (a new worktree, a deleted
 `.data`, a new machine, a new fork) applies all of them at once, and on APFS a listing can put a
@@ -25,8 +25,10 @@ database is left with an empty `_hub_migrations` and no tables. Every request th
 `[nuxt:hub] ERROR Failed to apply migration` line among the dev server's output. First seen in
 Sinew, where `0008` (altering `ops_events`) was listed before `0005` (creating it).
 
-`patches/@nuxthub%2Fcore@0.10.8.patch` (bun's `patchedDependencies`) sorts the list by name,
-the order drizzle-kit numbers them. A NuxtHub upgrade drops the patch with the version: check
+`patches/@nuxthub%2Fcore@0.10.12.patch` (bun's `patchedDependencies`) sorts the list by name,
+the order drizzle-kit numbers them. A NuxtHub upgrade drops the patch with the version, and bun
+says nothing (0.10.8 → 0.10.12 ran unpatched until a fork noticed), so `bun run patches:check`
+fails when a patch names a version that is not installed. On an upgrade, check
 whether upstream sorts by then, and carry the patch forward if not. Production is unaffected:
 `wrangler d1 migrations apply` sorts its own list.
 
@@ -46,7 +48,8 @@ So a deploy that adds a table ships a Worker querying a table that does not exis
 failure surfaces as a 500 on a route that worked perfectly in dev.
 
 **Workers Builds closes that gap with its deploy command, `bun run deploy:ci`.** It runs
-`db:migrate:remote`, then `wrangler --cwd .output deploy`, so the schema lands before the
+`deploy:secrets` (holds the deploy while the Worker lacks a secret `fleet.json` › `secrets`
+names), `db:migrate:remote`, then `wrangler --cwd .output deploy`, so the schema lands before the
 code that needs it, then `deploy:smoke`, which fails the build if `/` or `/api/health` is not
 serving 90 s later (the new version is already live; the red build is the alert). On the PR
 gate, `migrations:check` fails when `schema.ts` has changes no migration records, or when a new
@@ -218,6 +221,24 @@ all green. Because the rate limiter fails open by design, the only symptom was a
 Import them explicitly (`import { db } from '@nuxthub/db'`, `import { kv } from '@nuxthub/kv'`) in server utils. More generally: when a
 NuxtHub auto-import is load-bearing, check the running logs, not just the type checker.
 
+## `nuxt typecheck` checks `server/` only when the root tsconfig is solution-style
+
+Nuxt 4 generates four projects (`.nuxt/tsconfig.app.json`, `.server.json`, `.shared.json`,
+`.node.json`). `nuxt typecheck`, and the checker inside `nuxt dev` and `nuxt build`, run
+`vue-tsc -b` over all four only when the root `tsconfig.json` has `references`, `"files": []`
+and no `include`. Until 2026-11 it was `"extends": "./.nuxt/tsconfig.json"`, the legacy config
+that excludes `server/**`, so nothing under `server/` or `layers/*/server/` was ever
+typechecked and the gate stayed green. A fork shipped three scheduled tasks calling an
+auto-import NuxtHub had removed: `ReferenceError` on every run, and no backup for three months.
+
+- Keep the root `tsconfig.json` as it is. Compiler options go in `nuxt.config.ts` ›
+  `typescript.tsConfig`; set in the root file they reach no project.
+- A type augmentation both sides read (`shared/types/auth.d.ts`) lives in `shared/types/`.
+  Under `app/types/` only the app project sees it.
+- A removed auto-import is now `TS2304` in the gate, even where a test replaces the name with
+  `vi.stubGlobal`. It does not cover the case above (a name that typechecks but is not
+  injected), and nothing typechecks `test/` or `scripts/`.
+
 ## Custom `definePageMeta` keys need two opt-ins, and fail silently without them
 
 `sitemap.xml` and `llms.txt` are built from `definePageMeta({ publicPage: … })`, collected by
@@ -255,7 +276,7 @@ How each gate stays scoped — **match this when you add a gate**:
 | `lint` | `.oxlintrc.json` › `ignorePatterns` lists `.claude/**` |
 | `design:check` / `seo:check` / `brand:check` | Walk `ROOT/app`, `ROOT/app/pages`, and fixed root-relative asset paths |
 | `test` | `vitest.config.ts` › `include` is `test/**` + `server/**`, relative to the checkout |
-| `typecheck` | Nuxt's generated `.nuxt/tsconfig.*` use scoped includes (`../app/**/*`, `../server/**/*`), not a root glob |
+| `typecheck` | The root `tsconfig.json` has no files of its own, and Nuxt's generated `.nuxt/tsconfig.*` use scoped includes (`../app/**/*`, `../server/**/*`), not a root glob |
 | `test:a11y` | Per-checkout port — see below |
 | `build` | Nuxt only reads `app/`, `server/`, `shared/` |
 
@@ -297,11 +318,27 @@ move every time the branch did. `bun dev:app` bypasses the proxy entirely.
 > code now passes `bun typecheck` untouched. Believing the old note is the more expensive
 > mistake, because it argues against running agents in parallel at all.
 
+## A second `wrangler deploy` in the app's Workers Build overwrites the app
+
+A Workers Build belongs to one Worker, and it sets `WRANGLER_CI_OVERRIDE_NAME` so that every <!-- refs-check-ignore: set by Workers Builds, read in mcp/scripts/guard-deploy.ts -->
+`wrangler deploy` in the build uploads to that Worker, whatever `name` the config says. The
+section below is the reason that exists; the side effect is that one build cannot deploy a second
+Worker.
+
+A fork ended its `deploy:ci` with `bun run mcp:deploy`. On the first run (2026-11-18) wrangler
+uploaded the MCP worker under the app's name: the app's code was replaced, and because a deploy
+also sets the Worker's routes to the config's, the app's custom domain was detached and its crons
+removed. The site answered Cloudflare **error 1016**. No step failed until the smoke check.
+
+Recovery, in this order: `wrangler rollback <the app's last version id> --name <app>`, then
+`wrangler --cwd .output triggers deploy` from a built checkout to put the domain and the crons
+back (a rollback restores code and bindings, not triggers).
+
 ## Workers Builds: dashboard Worker name must match `wrangler.toml`
 
 CI/CD runs on Cloudflare Workers Builds (repo connected in the dashboard under Worker → Settings → Build). The Worker's name in the dashboard must exactly match `name` in the root `wrangler.toml`, or every build fails before it starts. When you fork and rename the project, reconnect the repo to a Worker with the new name. Build settings live in the dashboard, not in the repo, as two triggers. Production branch `main`: build `bun run typecheck && bun run build`, deploy `bun run deploy:ci` (migrates production D1, then deploys; needs D1 Edit on the build token, see above). Non-production branches (excluding `main` and `ops-journal`): build `bun run ci` (the PR gate), deploy a no-op `echo`, so branch builds upload nothing. `NUXT_SESSION_PASSWORD` must be set as a build variable there too — the old GitHub Actions secrets are gone. `NUXT_APP_SECRET` is runtime-only: build and tests run without it, so it is a Worker secret, not a build variable.
 
-**nuxt-auth-utils says `NUXT_SESSION_PASSWORD` "is not used anymore". It is, by this app.** Since 0.6 the module seals sessions from Nuxt's `appSecret` (`NUXT_APP_SECRET`) and warns once per isolate while the old variable is set. The app still reads it as `sessionPassword`, the salt for unsubscribe links and IP and search hashes. Deleting it to quiet the warning changes all of those silently. Missing `NUXT_APP_SECRET` in production is loud instead: every session read 500s.
+**nuxt-auth-utils says `NUXT_SESSION_PASSWORD` "is not used anymore". It is, by this app.** Since 0.6 the module seals sessions from Nuxt's `appSecret` (`NUXT_APP_SECRET`) and warns once per isolate while the old variable is set. The app still reads it as `sessionPassword`, the salt for unsubscribe links, IP and search hashes, and legacy referral refs. Deleting it to quiet the warning changes all of those silently. Missing `NUXT_APP_SECRET` in production is loud instead: every session read 500s. `bun run deploy:ci` now refuses to deploy while any name in `fleet.json` › `secrets` is absent from the Worker (`scripts/deploy-secrets.ts`), so add a new required secret to that list in the same commit that starts reading it.
 
 ## The browser suites run in GitHub Actions, NOT in `bun run ci`
 

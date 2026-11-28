@@ -8,12 +8,15 @@ Most rows trace to the teardown: billing, referrals, the MCP worker, the blog an
 
 | Path | Why it differs |
 | --- | --- |
+| `app/components/Account/SignInMethods.vue` | No provider sign-in to link: sign-in is the credentials layer's (TEARDOWN › Credentials only). |
 | `app/components/Auth/UserMenu.vue` | No billing: Dashboard is shown to everyone signed in, and there is no Pricing link. |
 | `app/pages/account.vue` | Dear Mantel's account page: a sign-in section linking to the credentials layer's settings, no plan or cancellation panel (no billing), no MCP connect code, and no email preferences (the only optional mail is the welcome email, gone before this page is reachable; Dear Mantel sends no tips or product mail). |
 | `app/pages/admin/users/[id].vue` | Support view without billing, comps or referral panels. |
+| `app/pages/auth/mcp.vue` | No MCP worker. |
 | `app/pages/auth/verify.vue` | Sign-in is the credentials layer's (`layers/credentials/app/pages/auth/`); no magic-link verify page. |
 | `app/pages/blog/` | No blog: @nuxt/content and the blog were torn down. |
 | `app/pages/dashboard.vue` | No subscription gate: the page needs a session only, and its copy says so. |
+| `app/pages/glossary/` | The template's sample glossary is removed: its terms are the template's, not Dear Mantel's (TEARDOWN › Glossary). The page-collection engine stays, with an empty list. |
 | `app/pages/login.vue` | Sign-in is the credentials layer's `/auth/sign-in`. |
 | `app/pages/privacy.vue` | Dear Mantel's privacy policy: encrypted letters, the family room, no payment processor. |
 | `app/pages/terms.vue` | Dear Mantel's terms: no payments, its own content section. |
@@ -24,7 +27,10 @@ Most rows trace to the teardown: billing, referrals, the MCP worker, the blog an
 | `scripts/check-forkless.ts` | Template-only gate that proves a teardown works on a temp copy; this fork is that teardown, so its own `bun run ci` is the proof. |
 | `scripts/check-mirrors.ts` | No MCP worker, so no mirrored rules; billing access pins absent with the billing layer. The gate stays, empty, for a future second Worker. |
 | `scripts/ci.ts` | No `forkless:check` step (see `scripts/check-forkless.ts`). |
+| `scripts/lib/mcp-build.ts` | No MCP worker, so no Workers Build for one. |
+| `scripts/mcp-build-setup.ts` | No MCP worker, so no Workers Build for one. |
 | `server/api/account/export.get.ts` | Comment only: no MCP connect-code limiter to name. |
+| `server/api/account/identities/` | No provider sign-in to link (TEARDOWN › Credentials only). The `user_identities` table and `user-identities.ts` stay, idle. |
 | `server/api/admin/users/[id].get.ts` | No referral columns. |
 | `server/api/auth/apple.ts` | Sign-in is the credentials layer's; no Apple sign-in. |
 | `server/api/auth/github.get.ts` | Sign-in is the credentials layer's; no GitHub sign-in. |
@@ -35,6 +41,7 @@ Most rows trace to the teardown: billing, referrals, the MCP worker, the blog an
 | `server/api/blog/` | No blog. |
 | `server/api/mcp/` | No MCP worker, so no connect codes. |
 | `server/plugins/blog-routes.ts` | No blog. |
+| `server/plugins/script-nonce.ts` | Not brought over: `layers/keys/server/plugins/script-nonce.ts` already nonces every rendered page (the template upstreamed it from this app). Two plugins would each set a different nonce and break every page's scripts. Delete the keys layer's plugin and util to take core's instead. |
 | `server/routes/llms.txt.get.ts` | No blog posts to append. |
 | `server/routes/sitemap.xml.get.ts` | No blog posts to list. |
 | `server/tasks/lifecycle-email.ts` | Comment only: no billing step (`pass_expiring`). |
@@ -43,12 +50,14 @@ Most rows trace to the teardown: billing, referrals, the MCP worker, the blog an
 | `server/utils/auth-providers.ts` | No provider list: one sign-in method. |
 | `server/utils/blog-routes.ts` | No blog. |
 | `server/utils/blog.ts` | No blog. |
-| `server/utils/email-templates.ts` | No purchase or pass-expiring email: no billing. |
-| `server/utils/lifecycle-emails.ts` | No pass-expiring email: no billing. |
-| `server/utils/lifecycle-steps.ts` | Comment only: no billing step. |
+| `server/utils/email-templates.ts` | No purchase, payment-failed or access-ended email: no billing. |
+| `server/utils/lifecycle-emails.ts` | Removed: the template keeps only the billing pass-expiring email here, and there is no billing. |
 | `server/utils/magic-link.ts` | No referral code carried on a link. |
+| `server/utils/mcp-connect.ts` | No MCP worker, so no connect codes. |
+| `server/utils/oauth-callback.ts` | No OAuth provider routes to finish (TEARDOWN › Credentials only). |
 | `server/utils/public-routes.ts` | Comment only: no blog routes to register. |
 | `server/utils/purge.ts` | One single-use credential table to sweep (magic links); no MCP connect codes. |
+| `shared/page-collections/` | The template's sample glossary is removed (see `app/pages/glossary/`). |
 | `shared/utils/analytics-events.ts` | No subscription or referral events. |
 | `shared/utils/attribution.ts` | No referral code in the attribution cookie. |
 | `shared/utils/blog.ts` | No blog. |

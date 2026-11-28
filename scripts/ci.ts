@@ -39,9 +39,11 @@ const cheap = [
   'seo:check',
   'fleet:check',
   'crons:check',
+  'routines:check',
   'methods:check',
   'mcp:check',
   'layers:check',
+  'patches:check',
 ].map((s) => run(s))
 
 const background = fast ? run('test', '--changed', 'origin/main', '--passWithNoTests') : run('test')

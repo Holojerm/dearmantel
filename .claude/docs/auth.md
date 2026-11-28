@@ -48,13 +48,24 @@ The watermark is the per-user lever; `runtimeConfig.session.maxAge` in
 `nuxt.config.ts` (30 days) is the ceiling on every session regardless, so a
 leaked cookie cannot outlive it.
 
-**Identity is the verified email address.** Signing in with a magic link today
-and Google tomorrow on the same address lands on the same account by design.
-That's only safe because every caller of `establishSession()` passes an explicit
-`emailVerified` — an unverified address would be an account-takeover primitive.
-Never default that flag to `true` when adding a provider. The magic-link path is
-the one place where that flag is our own evidence rather than a third party's: the
-token was mailed to that address and came back.
+**Identity is a provider account first, then the verified email address.**
+`establishSession()` runs every sign-in through `signInOAuthUser()`
+(`server/utils/oauth-sign-in.ts`), in this order:
+
+1. `(provider, subject)` in `user_identities` → that account, whatever address
+   the provider reports this time.
+2. A verified email matching an account → that account, and the identity is
+   recorded on it.
+3. A verified email matching nothing → a new account, identity recorded.
+
+An unverified or missing address never reaches 2 or 3, so it can neither match
+nor create an account. Every caller passes an explicit `emailVerified`; never
+default it to `true` when adding a provider. Magic link (and the credentials
+layer) carry no `subject`, so they are step 2 and 3 only: their identity is the
+email, and the magic-link token coming back is our own evidence the address is
+theirs. Account deletion deletes the `user_identities` rows in its batch (the
+`users` row is kept as a tombstone, so the FK cascade never fires), and the
+export lists them as `signInMethods`.
 
 
 **Never put a secret in a URL a browser will keep.** Two flows here have to hand
@@ -86,6 +97,10 @@ except the allowlist in `server/utils/public-routes.ts`. Core ships:
   icon the client bundle missed; static icon JSON.
 - `GET|POST /api/email/unsubscribe` — reached from a mail footer on a device
   that may not be signed in.
+- `POST /api/email/updates`, `POST /api/email/updates/confirm`,
+  `GET|POST /api/email/updates/unsubscribe` — the product-updates list for
+  visitors with no account; registered by `server/plugins/subscribers.ts`. The
+  first is behind Turnstile and two rate limits, the others behind a signed link.
 
 Features and forks add their own from a Nitro plugin; **never edit the
 middleware**:
